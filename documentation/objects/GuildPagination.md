@@ -1,0 +1,53 @@
+# GuildPagination
+
+**Type:** OBJECT
+
+## Description
+
+Pagination wrapper for Guild collections.
+
+## GraphQL Schema Definition
+
+```graphql
+type GuildPagination {
+  # List of items on the current page
+  data: [Guild]
+  
+  # Number of total items selected by the query
+  total: Int!
+  
+  # Number of items returned per page
+  per_page: Int!
+  
+  # Current page of the cursor
+  current_page: Int!
+  
+  # Number of the first item returned
+  from: Int
+  
+  # Number of the last item returned
+  to: Int
+  
+  # The last page (number of pages)
+  last_page: Int!
+  
+  # Determines if cursor has more pages after the current page
+  has_more_pages: Boolean!
+}
+```
+
+## Fields
+
+- `data: [Guild]` - List of items on the current page
+- `total: Int!` - Number of total items selected by the query
+- `per_page: Int!` - Number of items returned per page
+- `current_page: Int!` - Current page of the cursor
+- `from: Int` - Number of the first item returned
+- `to: Int` - Number of the last item returned
+- `last_page: Int!` - The last page (number of pages)
+- `has_more_pages: Boolean!` - Determines if cursor has more pages after the current page
+
+## Required By
+
+- **GuildData** - The GuildData object enables the retrieval of single guilds or filtered collections of guilds.
+- **Server** - A single server. Servers correspond to actual game servers that characters and guilds reside on.
