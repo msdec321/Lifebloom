@@ -1,6 +1,7 @@
-# WarcraftLogs Restoration Druid Performance Analyzer
+# Lifebloom - A WarcraftLogs Restoration Druid Analyzer
 
-This project provides comprehensive performance analysis for Restoration Druids from WarcraftLogs raid reports using the WarcraftLogs GraphQL API. It combines detailed performance metrics with rotation pattern analysis in a single unified output.
+Welcome to **Lifebloom** a retrospective analysis tool for TBC Restoration Druids.
+This tool fetches report data from WarcraftLogs via their GraphQL API. It combines report-level data such as HPS, Fight Duration, Number of healers, etc. with rotation pattern analysis in a single unified output.
 
 ## Quick Start
 
