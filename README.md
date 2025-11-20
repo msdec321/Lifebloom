@@ -1,35 +1,36 @@
 # Lifebloom - A WarcraftLogs Restoration Druid Analyzer
 
-Welcome to **Lifebloom** a retrospective analysis tool for TBC Restoration Druids.
-This tool fetches report data from WarcraftLogs via their GraphQL API. It combines report-level data such as HPS, Fight Duration, Number of healers, etc. with rotation pattern analysis in a single unified output.
+Welcome to **Lifebloom**, an open-source data fetching and analysis tool for TBC Restoration Druids.
+This tool fetches report data from WarcraftLogs via their GraphQL API, creates publicly available structured datasets, and provides a web-application tool for you to easily do your own analyses. Comprising this application are the following core components:
 
-## Quick Start
+- **Data Fetcher** - Fetches report-level data from a specified set of logs for a specific encounter.
+   - In order to run the fetcher on legacy reports, you must have a WarcraftLogs "Gold" tier subscription with a valid OAuth client ID and client secret. However, readers are welcome to use the already fetched datasets that I've collected. Legacy datasets from the original TBC Classic can be found within the "data/legacy/" directory.
+   - Datasets will also be created in the next cycle of TBC Classic, with a fetcher that runs on a weekly basis and keeps the data set up to date. (Todo: waiting for TBC launch to begin implementing this tool.)
+- **Rotation Calculator** - Calculates the Resto Druid's primary "Rotation" based on their cast sequence and other data items.
+- **WebApp Analysis Tool** - A front-end analysis application that can be used to explore the datasets using various filters. For example: Plot the performance of the top 5 rotations on Brutallus for raids with 6 healers, Druid's that have innervate but not shadow priest, Druid's playing deep resto, etc. There are many different ways to slice up and analyze a large set of data to match the particulars of your own raid environment.
+
+Below you will find more detailed descriptions of each tool.
+
+## Data fetcher
+
+This tool pulls data from the Warcraftlogs API using a set of pre-defined GraphQL queries. Data can be pulled for an individual player/boss/report, or alternatively a fetch data from a range of rankings for a particular boss. For example, fetch data for Druids on Brutallus with Rank between 200 and 500, and save the results to a CSV file.
 
 ### Prerequisites
 
 - Python 3.12+
 - WarcraftLogs API credentials ([Get them here](https://www.warcraftlogs.com/api/clients))
-- WarcraftLogs Gold tier subscription (for archived report access)
+- Optional: WarcraftLogs Gold tier subscription (for archived report access)
 
 ### Setup
 
-1. **Clone the repository**
-   ```bash
-   cd warcraftlogs
-   ```
-
-2. **Create a virtual environment**
+1. **Clone the repo, then create and setup a virtual environment**
    ```bash
    python3 -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. **Install dependencies**
-   ```bash
    pip install -r requirements.txt
    ```
-
-4. **Configure API credentials**
+   
+2. **Configure API credentials**
 
    Create a `.env` file with your WarcraftLogs API credentials:
    ```
@@ -37,7 +38,7 @@ This tool fetches report data from WarcraftLogs via their GraphQL API. It combin
    WARCRAFTLOGS_CLIENT_SECRET=your_client_secret_here
    ```
 
-5. **Authenticate**
+3. **Authenticate**
 
    Run the authentication script (one-time setup):
    ```bash
@@ -340,206 +341,6 @@ For example:
 - `[1LB 1I 2RG]` = One rotation start + 1 instant + 2 Regrowths
 - `[0LB 5I 0RG]` = No rotation start + 5 instant casts (between rotations)
 
-### Data Filtering
-
-The script intelligently filters casts to focus on meaningful actions:
-- **Regrowth:** Only shows begincast events (not completion) to avoid duplicates
-- **Healing Touch:** Completely filtered out
-- **Restore Mana:** Completely filtered out (mana potion usage)
-
-### Use Cases
-
-This analysis helps answer questions like:
-- What is the player's most common rotation pattern?
-- How often do they use instant-only rotations vs. weaving in Regrowths?
-- Are they pre-hotting tanks before tank swaps?
-- How does their rotation adapt during different fight phases?
-- What percentage of GCDs are instant casts vs. hardcasts?
-
----
-
-# WarcraftLogs API Documentation
-
-This repository also contains comprehensive documentation for the WarcraftLogs GraphQL API, covering all available types, queries, and data structures.
-
-## API Overview
-
-The WarcraftLogs API is a GraphQL-based interface for accessing combat log data, character rankings, guild information, and game metadata from World of Warcraft, Final Fantasy XIV, and other supported games.
-
-## Documentation Structure
-
-The documentation is organized into four main categories:
-
-### 📋 Schema (`/documentation/schema/`)
-Contains the root `Query` type definition, which serves as the primary entry point for all API requests. The Query type provides access to eight main data domains.
-
-### 📦 Objects (`/documentation/objects/`)
-Detailed documentation for complex GraphQL object types, including:
-- **Report** - Combat log reports with fights, events, rankings, and analysis data
-- **Character** - Player character information, rankings, and recent activity
-- **Guild** - Guild data, member rosters, attendance, and rankings
-- **GameData** - Static game data (abilities, items, NPCs, achievements, classes, etc.)
-- **WorldData** - Game world structure (expansions, zones, encounters, regions, servers)
-- **UserData** - Authenticated user information and settings
-- **RateLimitData** - API usage and rate limiting information
-- **ProgressRaceData** - World first and realm first race tracking
-
-### 🏷️ Enums (`/documentation/enums/`)
-Enumeration types that define valid values for various parameters:
-- **RoleType** - Tank, Healer, DPS, or Any
-- **CharacterRankingMetricType** - DPS, HPS, score, speed, and game-specific metrics
-- **KillType** - Kill tracking filters
-- **RankingTimeframeType** - Historical vs current rankings
-- **EventDataType**, **GraphDataType**, **TableDataType** - Data visualization types
-- And many more...
-
-### 📊 Scalars (`/documentation/scalars/`)
-Basic scalar types used throughout the API:
-- **String** - Text data
-- **Int** - Integer values
-- **Boolean** - True/false values
-- **JSON** - Complex JSON data structures
-
-## Main API Entry Points
-
-The root `Query` type provides access to these main data domains:
-
-### characterData
-Retrieve individual characters or filtered collections of characters, including:
-- Character rankings and statistics
-- Recent combat log appearances
-- Guild membership information
-- Cached game data (gear, specs, etc.)
-
-### reportData
-Access combat log reports uploaded by players:
-- Fight breakdowns and timelines
-- Event data with advanced filtering
-- Rankings and performance metrics
-- Player details (gear, talents, specs)
-- Graph and table visualizations
-
-### guildData
-Query guild information and rosters:
-- Guild member lists
-- Attendance tracking
-- Guild rankings by zone
-- Guild tags (raid teams)
-
-### gameData
-Static game data that changes only with major patches:
-- Abilities and spells
-- Items and item sets
-- NPCs and encounters
-- Classes and specializations
-- Achievements
-- Game zones and maps
-
-**Note:** Game data should be cached aggressively as it only updates with major game patches.
-
-### worldData
-Game world organizational structure:
-- Expansions and their zones
-- Dungeon and raid encounters
-- Regions and subregions
-- Servers (realms)
-
-### userData
-Retrieve the authenticated user's information (requires authentication with appropriate scopes).
-
-### rateLimitData
-Check API usage against rate limits to avoid throttling.
-
-### progressRaceData
-Track ongoing world first or realm first progression races. Updates every 30 seconds during active races.
-
-## Key Features
-
-### Advanced Filtering
-Most data endpoints support extensive filtering options:
-- Time ranges (startTime, endTime)
-- Difficulty levels
-- Encounter/boss filtering
-- Class and spec filtering
-- Ability-based filtering
-- Custom filter expressions
-
-### Pagination
-Collection endpoints support pagination with standardized parameters:
-- `limit` - Items per page (typically 1-100, default varies)
-- `page` - Page number (default: 1)
-
-### Rankings and Metrics
-Comprehensive ranking data with multiple metric types:
-- DPS, HPS, tanking metrics
-- Game-specific metrics (FFXIV: nDPS, rDPS, cDPS)
-- Score-based rankings (Mythic+ dungeons)
-- Speed rankings
-- Historical vs current comparisons
-
-### Data Visualization
-Multiple data representation formats:
-- **Events** - Paginated combat log events
-- **Graphs** - Time-series data visualization
-- **Tables** - Aggregated statistical data
-- **JSON** - Flexible structured data
-
-### Archive Access
-Reports can be archived after a certain period. Accessing archived report data requires a subscription with archive access.
-
-## Important Notes
-
-### Data Stability
-⚠️ Some fields return data that is **not considered frozen** and may change without notice:
-- Report events, graphs, tables, and rankings
-- Character rankings
-- Most analysis and statistical data
-
-Always use these fields with caution in production systems.
-
-### Caching Recommendations
-- **GameData**: Cache for extended periods (only changes with game patches)
-- **WorldData**: Cache for days/weeks (changes infrequently)
-- **Reports**: Cache based on archive status
-- **Rankings**: Cache briefly (can change frequently)
-
-### Rate Limiting
-Monitor `rateLimitData` to track API usage and avoid hitting rate limits. The API uses a points-based system for rate limiting.
-
-### Authentication
-Some endpoints and fields require authentication:
-- User profile data
-- Private logs access
-- Character claiming status
-- Guild member-specific data
-
-Use appropriate OAuth scopes when authenticating.
-
-## Use Cases
-
-### Player Performance Analysis
-Query reports to analyze player performance, compare rankings, and review combat logs for improvement opportunities.
-
-### Guild Management
-Track attendance, monitor member progression, manage raid teams, and analyze guild performance across tiers.
-
-### Theorycrafting
-Access game data to build simulators, calculate optimal rotations, or analyze ability interactions.
-
-### Progression Tracking
-Monitor world first races, track guild progression through raid tiers, and compare against other guilds.
-
-### Statistical Analysis
-Build dashboards, generate reports, and perform meta-analysis on class/spec performance across the playerbase.
-
-## Getting Started
-
-1. Browse the `/documentation/schema/Query.md` file to understand available entry points
-2. Explore object types in `/documentation/objects/` for detailed field information
-3. Reference enum types in `/documentation/enums/` for valid parameter values
-4. Build GraphQL queries using the schema definitions provided
-
-## Additional Resources
 
 For more information about the WarcraftLogs API:
 - Official API Documentation: https://www.warcraftlogs.com/api/docs
