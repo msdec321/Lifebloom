@@ -345,6 +345,17 @@ def main():
 
         new_count = 0
         skipped_count = 0
+        SAVE_INTERVAL = 10  # Save every 10 new entries
+
+        def save_progress():
+            """Sort and save all data to CSV"""
+            print(f"  💾 Saving progress... ({len(existing_data)} total entries)")
+            existing_data.sort(key=lambda x: int(x['Rank']))
+            with open(output_file, 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+                for row in existing_data:
+                    writer.writerow(row)
 
         for idx, ranking in enumerate(rankings):
             rank_number = start_rank + idx
@@ -361,23 +372,25 @@ def main():
             # Analyze new player
             row_data = analyze_ranking(ranking, rank_number, encounter_name)
             existing_data.append(row_data)
+            existing_report_ids.add(report_code)  # Add to set to prevent duplicates in same run
             new_count += 1
+
+            # Save progress every 10 new entries
+            if new_count % SAVE_INTERVAL == 0:
+                save_progress()
 
         print()
         print(f"✓ Analysis complete: {new_count} new entries, {skipped_count} skipped")
         print()
 
-        # Sort all data by Rank
-        print("Sorting data by Rank...")
-        existing_data.sort(key=lambda x: int(x['Rank']))
+        # Final save if there are unsaved changes
+        if new_count % SAVE_INTERVAL != 0 or new_count == 0:
+            print("Saving final results...")
+            save_progress()
+        else:
+            print("All data already saved!")
 
-        # Write all data back to CSV
-        print(f"Writing {len(existing_data)} total entries to {output_file}...")
-        with open(output_file, 'w', newline='', encoding='utf-8') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-            for row in existing_data:
-                writer.writerow(row)
+        print(f"✓ Total entries in CSV: {len(existing_data)}")
 
         print()
         print("=" * 80)
