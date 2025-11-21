@@ -485,6 +485,121 @@
             margin: 0;
             cursor: pointer;
         }
+
+        .about-section {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 25px 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border: 1px solid #2a3f5f;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .about-section h2 {
+            color: #667eea;
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .about-section p {
+            color: #c5d0e6;
+            line-height: 1.7;
+            margin-bottom: 15px;
+        }
+
+        .about-section p:last-child {
+            margin-bottom: 0;
+        }
+
+        .author-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .author-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 3px solid #667eea;
+            object-fit: cover;
+        }
+
+        .author-name {
+            color: #fff;
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        .contact-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .contact-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: #0f3460;
+            border: 1px solid #2a3f5f;
+            border-radius: 6px;
+            color: #c5d0e6;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .contact-link:hover {
+            border-color: #667eea;
+            background: #1a3f6f;
+            color: #fff;
+        }
+
+        .contact-link.discord {
+            cursor: default;
+        }
+
+        .author-section {
+            display: flex;
+            gap: 25px;
+        }
+
+        .author-section .author-avatar {
+            flex-shrink: 0;
+        }
+
+        .author-content {
+            flex: 1;
+        }
+
+        .author-content h2 {
+            margin-top: 0;
+        }
+
+        .about-section ul {
+            color: #c5d0e6;
+            line-height: 1.7;
+            margin: 15px 0;
+            padding-left: 25px;
+        }
+
+        .about-section li {
+            margin-bottom: 8px;
+        }
+
+        .about-section em {
+            color: #667eea;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -706,7 +821,43 @@
         <div id="aboutTab" class="tab-content">
             <div class="container">
                 <h1>About</h1>
-                <p style="color: #8b9dc3;">Information about this tool coming soon...</p>
+
+                <div class="about-section">
+                    <h2>About Lifebloom</h2>
+                    <p>Lifebloom is an application that collects and structures TBC Resto Druid data from WarcraftLogs in order to help facilitate retrospective data analyses by and for the community. This app is still in development in preparation for the next iteration of TBC Classic.</p>
+                </div>
+
+                <div class="about-section">
+                    <h2>Motivation</h2>
+                    <p>The Burning Crusade is almost 20 years old. Despite so much time passing, I don't believe our collective understanding of Resto Druid has progressed significantly since 2007 - and that is <em>not</em> because the spec has been solved. With TBC Classic, I had hoped that the community would push beyond what was figured out during the original TBC and the private server era. Instead, what I observed was largely "re-discovery" of existing knowledge and recycled guides. The 2007 Elitist Jerks guide remains one of the most comprehensive Resto Druid resources available - not because it answered everything, but because we've barely tried to advance our knowledge of the class since then. I think we can do better.</p>
+                    <p>To illustrate, consider the following fundamental questions that I believe remain unanswered:</p>
+                    <ul>
+                        <li>For a given encounter, is there an optimal haste rating threshold?</li>
+                        <li>For a given encounter, is there an optimal healing rotation?</li>
+                    </ul>
+                    <p>These questions appear straightforward, yet after 20 years neither has a definitive answer. Here's my hot take: traditional theorycrafting alone will never resolve them.</p>
+                    <p>The reason is multifaceted.</p>
+                    <p>First, healer theorycrafting is inherently difficult. Raid encounters are complex environments with numerous confounding variables: healer count and composition, fight duration, access to Shadow Priest, etc. The optimal rotation for a 3-minute encounter may differ significantly from a 6-minute encounter due to mana constraints alone.</p>
+                    <p>Second, the community appears hesitant to engage in rigorous theorycrafting, and there's ongoing debate about whether HPS can even serve as a valid performance metric. While many factors affecting HPS are outside individual control, several are not—rotation choices, gearing decisions (+heal vs. haste), and more. By analyzing large datasets while controlling for confounding variables, we can isolate which rotations outperform others across different encounters and conditions.</p>
+                    <p>I don't believe these questions are unanswerable, but we need a new approach. That is the motivation for this tool: combining traditional theorycrafting with data-driven analysis to address fundamental questions and to advance our understanding of the spec.</p>
+                </div>
+
+                <div class="about-section author-section">
+                    <img src="/static/icons/avatar.png" alt="Mercy" class="author-avatar">
+                    <div class="author-content">
+                        <h2>About the Author</h2>
+                        <p>Welcome readers! My name is Mercy (IGN Mercychan) and I've been playing TBC Resto Druid since c. 2017 from the private server era and through TBC Classic. I play this spec religiously, and in my opinion TBC was when the class design for resto druid was at its best. In real life I LARP as a Data Scientist. I'm hoping to bring together my experience in data science and my passion for this spec in order to help the community push our knowledge of TBC Resto Druid further.</p>
+                        <p>If you want to support this project, the best way that you can do that is by using the tool and discussing your insights with the community. The more people become aware of and use this tool for their own analyses, the more we can learn together. If you found the app useful, consider giving the repo a star!</p>
+                        <p>If you want to report bugs, request additions to the tool or dataset, or even collab on an analysis, the best way to contact me is via Discord. I'm not always in the community servers but my DMs are open! Feel free to reach out.</p>
+
+                        <div class="contact-links">
+                            <a href="https://github.com/msdec321/Lifebloom" target="_blank" class="contact-link">GitHub Repo</a>
+                            <a href="https://classic.warcraftlogs.com/character/us/benediction/mercychann?zone=1013&partition=6&metric=hps" target="_blank" class="contact-link">WarcraftLogs</a>
+                            <a href="https://www.twitch.tv/mercylolk" target="_blank" class="contact-link">Twitch</a>
+                            <span class="contact-link discord">Discord: Mercy9226</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
