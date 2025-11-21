@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lifebloom - A Restoration Druid Analysis Tool</title>
+    <link rel="icon" type="image/jpeg" href="/static/icons/lifebloom.jpg">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #1a1a2e;
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+            color: #eee;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 200px;
+            background: #16213e;
+            border-right: 2px solid #2a3f5f;
+            padding: 20px 0;
+            position: fixed;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            color: #8b9dc3;
+            font-weight: 600;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar-tab:hover {
+            background: #1a1a2e;
+            color: #fff;
+        }
+
+        .sidebar-tab.active {
+            background: #1a1a2e;
+            color: #fff;
+            border-left-color: #667eea;
+        }
+
+        .main-content {
+            margin-left: 200px;
+            flex: 1;
+            padding: 20px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #fff;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        .druid-text {
+            color: #DE772A;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+            border: 1px solid #2a3f5f;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.5);
+            border-color: #667eea;
+        }
+
+        .stat-card h3 {
+            color: #8b9dc3;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .table-container {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            overflow-x: auto;
+            border: 1px solid #2a3f5f;
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 20px;
+        }
+
+        .table-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #8b9dc3;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .filtered-count {
+            font-size: 0.9em;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .table-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .table-controls label {
+            color: #eee;
+            font-weight: 600;
+        }
+
+        .table-controls input {
+            padding: 8px 12px;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            font-size: 1em;
+            width: 80px;
+            background: #0f3460;
+            color: #fff;
+        }
+
+        .table-controls input:focus {
+            outline: none;
+            border-color: #8b9dc3;
+        }
+
+        .table-controls button {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .table-controls button:hover {
+            background: #5568d3;
+        }
+
+        .collapse-btn {
+            background: #0f3460;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            padding: 8px 16px;
+            color: #fff;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .collapse-btn:hover {
+            background: #667eea;
+        }
+
+        .table-content {
+            transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+            overflow: hidden;
+        }
+
+        .table-content.collapsed {
+            max-height: 0 !important;
+            opacity: 0;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border: 1px solid #2a3f5f;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #8b9dc3;
+        }
+
+        .chart-container canvas {
+            max-height: 400px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #0f3460;
+            color: white;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #2a3f5f;
+            color: #eee;
+        }
+
+        th {
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85em;
+            letter-spacing: 0.5px;
+        }
+
+        tbody tr:hover {
+            background-color: #1f2d47;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #8b9dc3;
+            font-size: 1.2em;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .badge-yes {
+            background-color: #10b981;
+            color: white;
+        }
+
+        .badge-no {
+            background-color: #ef4444;
+            color: white;
+        }
+
+        .controls {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border: 1px solid #2a3f5f;
+        }
+
+        .controls-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #8b9dc3;
+            margin-bottom: 15px;
+        }
+
+        .controls-row {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .controls label {
+            margin-right: 10px;
+            font-weight: 600;
+            color: #eee;
+        }
+
+        .controls select,
+        .controls input {
+            padding: 8px 12px;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            font-size: 1em;
+            background: #0f3460;
+            color: #fff;
+        }
+
+        .controls select {
+            width: 150px;
+            cursor: pointer;
+        }
+
+        .controls input {
+            width: 100px;
+        }
+
+        .controls select:focus,
+        .controls input:focus {
+            outline: none;
+            border-color: #8b9dc3;
+        }
+
+        .controls button {
+            padding: 8px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-left: 10px;
+            transition: background 0.2s;
+        }
+
+        .controls button:hover {
+            background: #5568d3;
+        }
+
+        .icon-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            margin-bottom: 30px;
+        }
+
+        .icon-button-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .icon-label {
+            color: #8b9dc3;
+            font-size: 0.9em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .icon-button {
+            background: #16213e;
+            border: 2px solid #2a3f5f;
+            border-radius: 10px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-button:hover {
+            border-color: #667eea;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .icon-button.active {
+            border-color: #667eea;
+            background: #0f3460;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .icon-button img {
+            width: 44px;
+            height: 44px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-tab active" onclick="switchTab('analysis')">Analysis Tool</div>
+        <div class="sidebar-tab" onclick="switchTab('report')">Report Analyzer</div>
+        <div class="sidebar-tab" onclick="switchTab('about')">About</div>
+    </div>
+
+    <div class="main-content">
+        <!-- Analysis Tool Tab -->
+        <div id="analysisTab" class="tab-content active">
+            <div class="container">
+                <h1 id="pageTitle">Lifebloom - A Restoration <span class="druid-text">Druid</span> Analysis Tool</h1>
+
+        <div class="icon-buttons">
+            <div class="icon-button-container">
+                <div class="icon-label">Deep Resto</div>
+                <button class="icon-button" id="treeOfLifeBtn">
+                    <img src="/static/icons/treeoflife.jpg" alt="Tree of Life">
+                </button>
+            </div>
+            <div class="icon-button-container">
+                <div class="icon-label">Dreamstate</div>
+                <button class="icon-button" id="dreamstateBtn">
+                    <img src="/static/icons/dreamstate.jpg" alt="Dreamstate">
+                </button>
+            </div>
+            <div class="icon-button-container">
+                <div class="icon-label">Nature's Grace</div>
+                <button class="icon-button" id="naturesGraceBtn">
+                    <img src="/static/icons/naturesgrace.jpg" alt="Nature's Grace">
+                </button>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="controls-title">Filters</div>
+            <div class="controls-row">
+                <label for="dataset">Boss:</label>
+                <select id="dataset" onchange="loadData()">
+                    <option value="brutallus">Brutallus</option>
+                    <option value="felmyst">Felmyst</option>
+                </select>
+
+                <label for="totalHealers">Total Healers:</label>
+                <select id="totalHealers" onchange="loadTopN()">
+                    <option value="">Any</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                    <option value="8">8</option>
+                </select>
+
+                <label for="shadowPriest">Shadow Priest:</label>
+                <select id="shadowPriest" onchange="loadTopN()">
+                    <option value="">Any</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                </select>
+
+                <label for="innervates">Innervates:</label>
+                <select id="innervates" onchange="loadTopN()">
+                    <option value="">Any</option>
+                    <option value="0">0</option>
+                    <option value="1" selected>1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                </select>
+
+                <label for="rotatingOnTank">Rotating on Tank:</label>
+                <select id="rotatingOnTank" onchange="loadTopN()">
+                    <option value="">Any</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                </select>
+
+                <span style="color: #8b9dc3; font-weight: 600; margin-left: 20px;">Region:</span>
+                <label style="margin-left: 5px; margin-right: 10px; cursor: pointer;">
+                    <input type="checkbox" id="regionUS" value="US" checked onchange="loadTopN()" style="margin-right: 3px; cursor: pointer;">US
+                </label>
+                <label style="margin-right: 10px; cursor: pointer;">
+                    <input type="checkbox" id="regionEU" value="EU" checked onchange="loadTopN()" style="margin-right: 3px; cursor: pointer;">EU
+                </label>
+                <label style="margin-right: 10px; cursor: pointer;">
+                    <input type="checkbox" id="regionCN" value="CN" checked onchange="loadTopN()" style="margin-right: 3px; cursor: pointer;">CN
+                </label>
+                <label style="margin-right: 10px; cursor: pointer;">
+                    <input type="checkbox" id="regionKR" value="KR" checked onchange="loadTopN()" style="margin-right: 3px; cursor: pointer;">KR
+                </label>
+            </div>
+            <div class="controls-row" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #2a3f5f;">
+                <span style="color: #8b9dc3; font-weight: 600; margin-right: 15px;">Healer Comp:</span>
+
+                <label for="nDruid">Druids:</label>
+                <select id="nDruid" onchange="loadTopN()">
+                    <option value="">Any</option>
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                </select>
+
+                <label for="nPaladin">Paladins:</label>
+                <select id="nPaladin" onchange="loadTopN()">
+                    <option value="">Any</option>
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                </select>
+
+                <label for="nHPriest">Holy Priests:</label>
+                <select id="nHPriest" onchange="loadTopN()">
+                    <option value="">Any</option>
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                </select>
+
+                <label for="nDPriest">Disc Priests:</label>
+                <select id="nDPriest" onchange="loadTopN()">
+                    <option value="">Any</option>
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                </select>
+
+                <label for="nShaman">Shamans:</label>
+                <select id="nShaman" onchange="loadTopN()">
+                    <option value="">Any</option>
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title">HPS vs Duration</div>
+                </div>
+                <canvas id="hpsChart"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title">HPS vs Haste</div>
+                </div>
+                <canvas id="hasteChart"></canvas>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div class="table-header">
+                <div class="table-title">
+                    <span>Rankings</span>
+                    <span class="filtered-count" id="filteredCount"></span>
+                </div>
+                <div class="table-controls">
+                    <label for="topN">Show Top:</label>
+                    <input type="number" id="topN" value="20" min="1" max="100">
+                    <button onclick="loadTopN()">Update</button>
+                    <button class="collapse-btn" id="collapseBtn" onclick="toggleTable()">Collapse</button>
+                </div>
+            </div>
+            <div class="table-content" id="tableContent">
+                <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>Adjusted<br>Rank</th>
+                        <th>Name</th>
+                        <th>Server</th>
+                        <th>Region</th>
+                        <th>Duration</th>
+                        <th>HPS</th>
+                        <th>Haste</th>
+                        <th>Spirit</th>
+                        <th>Total<br>Healers</th>
+                        <th>Innervates</th>
+                        <th>Shadow<br>Priest</th>
+                        <th>Rotating<br>on Tank</th>
+                        <th>Primary<br>Rotation</th>
+                        <th>Report<br>Link</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="14" class="loading">Loading data...</td>
+                    </tr>
+                </tbody>
+            </table>
+            </div>
+        </div>
+            </div>
+        </div>
+
+        <!-- Report Analyzer Tab -->
+        <div id="reportTab" class="tab-content">
+            <div class="container">
+                <h1>Report Analyzer</h1>
+                <p style="color: #8b9dc3;">Report analyzer coming soon...</p>
+            </div>
+        </div>
+
+        <!-- About Tab -->
+        <div id="aboutTab" class="tab-content">
+            <div class="container">
+                <h1>About</h1>
+                <p style="color: #8b9dc3;">Information about this tool coming soon...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Remove active from all sidebar tabs
+            document.querySelectorAll('.sidebar-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab
+            if (tabName === 'analysis') {
+                document.getElementById('analysisTab').classList.add('active');
+                document.querySelector('.sidebar-tab:nth-child(1)').classList.add('active');
+            } else if (tabName === 'report') {
+                document.getElementById('reportTab').classList.add('active');
+                document.querySelector('.sidebar-tab:nth-child(2)').classList.add('active');
+            } else if (tabName === 'about') {
+                document.getElementById('aboutTab').classList.add('active');
+                document.querySelector('.sidebar-tab:nth-child(3)').classList.add('active');
+            }
+        }
+
+        // Chart instances
+        let hpsChart = null;
+        let hasteChart = null;
+
+        // Parse duration string (e.g., "4m 24s") to seconds
+        function parseDurationToSeconds(duration) {
+            if (!duration) return 0;
+            let seconds = 0;
+            const minuteMatch = duration.match(/(\d+)m/);
+            const secondMatch = duration.match(/(\d+)s/);
+            if (minuteMatch) seconds += parseInt(minuteMatch[1]) * 60;
+            if (secondMatch) seconds += parseInt(secondMatch[1]);
+            return seconds;
+        }
+
+        // Helper function to get selected regions
+        function getSelectedRegions() {
+            const regions = [];
+            if (document.getElementById('regionUS').checked) regions.push('US');
+            if (document.getElementById('regionEU').checked) regions.push('EU');
+            if (document.getElementById('regionCN').checked) regions.push('CN');
+            if (document.getElementById('regionKR').checked) regions.push('KR');
+            return regions.join(',');
+        }
+
+        // Load and update chart with all filtered data
+        async function updateChart() {
+            const dataset = document.getElementById('dataset').value;
+            const totalHealers = document.getElementById('totalHealers').value;
+            const shadowPriest = document.getElementById('shadowPriest').value;
+            const innervates = document.getElementById('innervates').value;
+            const rotatingOnTank = document.getElementById('rotatingOnTank').value;
+            const nDruid = document.getElementById('nDruid').value;
+            const nPaladin = document.getElementById('nPaladin').value;
+            const nHPriest = document.getElementById('nHPriest').value;
+            const nDPriest = document.getElementById('nDPriest').value;
+            const nShaman = document.getElementById('nShaman').value;
+            const regions = getSelectedRegions();
+
+            // Build URL with all filters but request all data (use high limit)
+            let url = `/api/top/10000?dataset=${dataset}`;
+            if (currentFilter !== null) {
+                url += `&naturesGrace=${currentFilter}`;
+            }
+            if (totalHealers) {
+                url += `&totalHealers=${totalHealers}`;
+            }
+            if (shadowPriest) {
+                url += `&vampiricTouch=${shadowPriest}`;
+            }
+            if (innervates) {
+                url += `&innervates=${innervates}`;
+            }
+            if (rotatingOnTank) {
+                url += `&rotatingOnTank=${rotatingOnTank}`;
+            }
+            if (nDruid) {
+                url += `&nDruid=${nDruid}`;
+            }
+            if (nPaladin) {
+                url += `&nPaladin=${nPaladin}`;
+            }
+            if (nHPriest) {
+                url += `&nHPriest=${nHPriest}`;
+            }
+            if (nDPriest) {
+                url += `&nDPriest=${nDPriest}`;
+            }
+            if (nShaman) {
+                url += `&nShaman=${nShaman}`;
+            }
+            if (regions) {
+                url += `&regions=${regions}`;
+            }
+
+            try {
+                const response = await fetch(url);
+                const result = await response.json();
+                const data = result.data;
+
+                const ctx = document.getElementById('hpsChart').getContext('2d');
+
+                // Parse data for chart
+                const chartData = data.map(row => ({
+                    x: parseDurationToSeconds(row.Duration),
+                    y: row.HPS,
+                    name: row.Name
+                }));
+
+                // Calculate min/max for y-axis
+                const hpsValues = chartData.map(d => d.y);
+                const minHPS = Math.min(...hpsValues);
+                const yAxisMin = Math.max(0, minHPS - 100); // Don't go below 0
+
+                // Destroy existing chart if it exists
+                if (hpsChart) {
+                    hpsChart.destroy();
+                }
+
+                // Create new chart
+                hpsChart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'HPS vs Duration',
+                        data: chartData,
+                        backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                        borderColor: 'rgba(102, 126, 234, 1)',
+                        borderWidth: 1,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const point = chartData[context.dataIndex];
+                                    return `${point.name}: ${point.y.toFixed(2)} HPS at ${point.x}s`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Duration (seconds)',
+                                color: '#8b9dc3',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            ticks: {
+                                color: '#8b9dc3'
+                            },
+                            grid: {
+                                color: 'rgba(139, 157, 195, 0.1)'
+                            }
+                        },
+                        y: {
+                            min: yAxisMin,
+                            title: {
+                                display: true,
+                                text: 'HPS',
+                                color: '#8b9dc3',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            ticks: {
+                                color: '#8b9dc3',
+                                callback: function(value, index, ticks) {
+                                    // Hide the minimum tick value
+                                    if (index === 0) {
+                                        return '';
+                                    }
+                                    return value;
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(139, 157, 195, 0.1)'
+                            }
+                        }
+                    }
+                }
+                });
+            } catch (error) {
+                console.error('Error loading chart data:', error);
+            }
+        }
+
+        // Load and update Haste chart with all filtered data
+        async function updateHasteChart() {
+            const dataset = document.getElementById('dataset').value;
+            const totalHealers = document.getElementById('totalHealers').value;
+            const shadowPriest = document.getElementById('shadowPriest').value;
+            const innervates = document.getElementById('innervates').value;
+            const rotatingOnTank = document.getElementById('rotatingOnTank').value;
+            const nDruid = document.getElementById('nDruid').value;
+            const nPaladin = document.getElementById('nPaladin').value;
+            const nHPriest = document.getElementById('nHPriest').value;
+            const nDPriest = document.getElementById('nDPriest').value;
+            const nShaman = document.getElementById('nShaman').value;
+            const regions = getSelectedRegions();
+
+            // Build URL with all filters but request all data (use high limit)
+            let url = `/api/top/10000?dataset=${dataset}`;
+            if (currentFilter !== null) {
+                url += `&naturesGrace=${currentFilter}`;
+            }
+            if (totalHealers) {
+                url += `&totalHealers=${totalHealers}`;
+            }
+            if (shadowPriest) {
+                url += `&vampiricTouch=${shadowPriest}`;
+            }
+            if (innervates) {
+                url += `&innervates=${innervates}`;
+            }
+            if (rotatingOnTank) {
+                url += `&rotatingOnTank=${rotatingOnTank}`;
+            }
+            if (nDruid) {
+                url += `&nDruid=${nDruid}`;
+            }
+            if (nPaladin) {
+                url += `&nPaladin=${nPaladin}`;
+            }
+            if (nHPriest) {
+                url += `&nHPriest=${nHPriest}`;
+            }
+            if (nDPriest) {
+                url += `&nDPriest=${nDPriest}`;
+            }
+            if (nShaman) {
+                url += `&nShaman=${nShaman}`;
+            }
+            if (regions) {
+                url += `&regions=${regions}`;
+            }
+
+            try {
+                const response = await fetch(url);
+                const result = await response.json();
+                const data = result.data;
+
+                const ctx = document.getElementById('hasteChart').getContext('2d');
+
+                // Parse data for chart (filter out records with Haste = 0)
+                const chartData = data
+                    .filter(row => row.Haste > 0)
+                    .map(row => ({
+                        x: row.Haste,
+                        y: row.HPS,
+                        name: row.Name
+                    }));
+
+                // Calculate min for y-axis
+                const hpsValues = chartData.map(d => d.y);
+                const minHPS = Math.min(...hpsValues);
+                const yAxisMin = Math.max(0, minHPS - 100);
+
+                // Destroy existing chart if it exists
+                if (hasteChart) {
+                    hasteChart.destroy();
+                }
+
+                // Create new chart
+                hasteChart = new Chart(ctx, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: 'HPS vs Haste',
+                            data: chartData,
+                            backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                            borderColor: 'rgba(102, 126, 234, 1)',
+                            borderWidth: 1,
+                            pointRadius: 5,
+                            pointHoverRadius: 7
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const point = chartData[context.dataIndex];
+                                        return `${point.name}: ${point.y.toFixed(2)} HPS at ${point.x} Haste`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Haste',
+                                    color: '#8b9dc3',
+                                    font: {
+                                        size: 14,
+                                        weight: 'bold'
+                                    }
+                                },
+                                ticks: {
+                                    color: '#8b9dc3'
+                                },
+                                grid: {
+                                    color: 'rgba(139, 157, 195, 0.1)'
+                                }
+                            },
+                            y: {
+                                min: yAxisMin,
+                                title: {
+                                    display: true,
+                                    text: 'HPS',
+                                    color: '#8b9dc3',
+                                    font: {
+                                        size: 14,
+                                        weight: 'bold'
+                                    }
+                                },
+                                ticks: {
+                                    color: '#8b9dc3',
+                                    callback: function(value, index, ticks) {
+                                        // Hide the minimum tick value
+                                        if (index === 0) {
+                                            return '';
+                                        }
+                                        return value;
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(139, 157, 195, 0.1)'
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading haste chart data:', error);
+            }
+        }
+
+        // Toggle table collapse/expand
+        function toggleTable() {
+            const tableContent = document.getElementById('tableContent');
+            const collapseBtn = document.getElementById('collapseBtn');
+
+            if (tableContent.classList.contains('collapsed')) {
+                tableContent.classList.remove('collapsed');
+                tableContent.style.maxHeight = tableContent.scrollHeight + 'px';
+                collapseBtn.textContent = 'Collapse';
+            } else {
+                tableContent.style.maxHeight = tableContent.scrollHeight + 'px';
+                setTimeout(() => {
+                    tableContent.classList.add('collapsed');
+                }, 10);
+                collapseBtn.textContent = 'Expand';
+            }
+        }
+
+        // Update max-height when content changes
+        function updateTableHeight() {
+            const tableContent = document.getElementById('tableContent');
+            if (!tableContent.classList.contains('collapsed')) {
+                tableContent.style.maxHeight = tableContent.scrollHeight + 'px';
+            }
+        }
+
+        // Global filter state
+        let currentFilter = null;
+
+        async function loadTopN() {
+            const n = document.getElementById('topN').value || 20;
+            const dataset = document.getElementById('dataset').value;
+            const totalHealers = document.getElementById('totalHealers').value;
+            const shadowPriest = document.getElementById('shadowPriest').value;
+            const innervates = document.getElementById('innervates').value;
+            const rotatingOnTank = document.getElementById('rotatingOnTank').value;
+            const nDruid = document.getElementById('nDruid').value;
+            const nPaladin = document.getElementById('nPaladin').value;
+            const nHPriest = document.getElementById('nHPriest').value;
+            const nDPriest = document.getElementById('nDPriest').value;
+            const nShaman = document.getElementById('nShaman').value;
+            const regions = getSelectedRegions();
+
+            // Build URL with optional filters
+            let url = `/api/top/${n}?dataset=${dataset}`;
+            if (currentFilter !== null) {
+                url += `&naturesGrace=${currentFilter}`;
+            }
+            if (totalHealers) {
+                url += `&totalHealers=${totalHealers}`;
+            }
+            if (shadowPriest) {
+                url += `&vampiricTouch=${shadowPriest}`;
+            }
+            if (innervates) {
+                url += `&innervates=${innervates}`;
+            }
+            if (rotatingOnTank) {
+                url += `&rotatingOnTank=${rotatingOnTank}`;
+            }
+            if (nDruid) {
+                url += `&nDruid=${nDruid}`;
+            }
+            if (nPaladin) {
+                url += `&nPaladin=${nPaladin}`;
+            }
+            if (nHPriest) {
+                url += `&nHPriest=${nHPriest}`;
+            }
+            if (nDPriest) {
+                url += `&nDPriest=${nDPriest}`;
+            }
+            if (nShaman) {
+                url += `&nShaman=${nShaman}`;
+            }
+            if (regions) {
+                url += `&regions=${regions}`;
+            }
+
+            try {
+                const response = await fetch(url);
+                const result = await response.json();
+                const data = result.data;
+                const totalCount = result.total_count;
+
+                const tableBody = document.getElementById('tableBody');
+
+                if (data.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="14" style="text-align: center;">No data available</td></tr>';
+                    document.getElementById('filteredCount').textContent = `(0 Filtered Records)`;
+                    return;
+                }
+
+                tableBody.innerHTML = data.map(row => `
+                    <tr>
+                        <td>${row.AdjustedRank || 'N/A'}</td>
+                        <td><strong>${row.Name || 'N/A'}</strong></td>
+                        <td>${row.Server || 'N/A'}</td>
+                        <td>${row.Region || 'N/A'}</td>
+                        <td>${row.Duration || 'N/A'}</td>
+                        <td><strong>${typeof row.HPS === 'number' && !isNaN(row.HPS) ? row.HPS.toFixed(2) : 'N/A'}</strong></td>
+                        <td>${typeof row.Haste === 'number' && !isNaN(row.Haste) ? row.Haste : 'N/A'}</td>
+                        <td>${typeof row.Spirit === 'number' && !isNaN(row.Spirit) ? row.Spirit : 'N/A'}</td>
+                        <td>${row.TotalHealers || 'N/A'}</td>
+                        <td>${typeof row.InnervateCount === 'number' ? row.InnervateCount : 'N/A'}</td>
+                        <td>${row.VampiricTouch || 'N/A'}</td>
+                        <td>${row.RotatingOnTank || 'N/A'}</td>
+                        <td>${row.Rotation1 || 'N/A'}</td>
+                        <td>${row.ReportLink ? `<a href="${row.ReportLink}" target="_blank" style="display: inline-block; padding: 6px 12px; background: #667eea; color: white; text-decoration: none; border-radius: 4px; font-size: 0.85em; font-weight: 600; transition: background 0.2s;" onmouseover="this.style.background='#5568d3'" onmouseout="this.style.background='#667eea'">View</a>` : 'N/A'}</td>
+                    </tr>
+                `).join('');
+
+                // Update filtered count with total count from entire filtered dataset
+                document.getElementById('filteredCount').textContent = `(${totalCount} Filtered Records)`;
+
+                // Update charts with all filtered data (separate from table)
+                updateChart();
+                updateHasteChart();
+
+                // Update table height after loading data
+                setTimeout(updateTableHeight, 100);
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('tableBody').innerHTML = '<tr><td colspan="14" style="text-align: center; color: red;">Error loading data</td></tr>';
+            }
+        }
+
+        // Function to load all data
+        function loadData() {
+            loadTopN();
+        }
+
+        // Function to set filter and update buttons
+        function setFilter(filter, buttonId) {
+            // Remove active class from all buttons
+            document.querySelectorAll('.icon-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // If clicking the same filter, toggle it off
+            if (currentFilter === filter) {
+                currentFilter = null;
+            } else {
+                currentFilter = filter;
+                // Add active class to clicked button
+                if (buttonId) {
+                    document.getElementById(buttonId).classList.add('active');
+                }
+            }
+
+            // Reload data with new filter
+            loadTopN();
+        }
+
+        // Load data on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadData();
+
+            // Add click handlers to icon buttons
+            document.getElementById('treeOfLifeBtn').addEventListener('click', () => {
+                setFilter('No', 'treeOfLifeBtn');
+            });
+
+            document.getElementById('naturesGraceBtn').addEventListener('click', () => {
+                setFilter('Yes', 'naturesGraceBtn');
+            });
+
+            // Dreamstate button does nothing for now
+            document.getElementById('dreamstateBtn').addEventListener('click', () => {
+                // No action yet
+            });
+        });
+    </script>
+</body>
+</html>

@@ -33,5 +33,11 @@ __pycache__/
 # Windows metadata
 *:Zone.Identifier
 
+# uWSGI
+*.log
+uwsgi.pid
+uwsgi.sock
+/tmp/
+
 
 

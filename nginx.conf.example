@@ -1,0 +1,26 @@
+# Example Nginx configuration for reverse proxy
+# Copy to /etc/nginx/sites-available/warcraftlogs and symlink to sites-enabled
+
+server {
+    listen 80;
+    server_name your-domain.com;  # Change this to your domain
+
+    # Serve static files directly
+    location /static {
+        alias /path/to/warcraftlogs/static;  # Change this path
+        expires 30d;
+    }
+
+    # Proxy all other requests to uWSGI
+    location / {
+        include uwsgi_params;
+        uwsgi_pass 127.0.0.1:8000;  # Must match socket in uwsgi.ini
+        uwsgi_read_timeout 60s;
+        uwsgi_send_timeout 60s;
+    }
+
+    # Increase buffer sizes for large responses
+    uwsgi_buffer_size 32k;
+    uwsgi_buffers 8 32k;
+    uwsgi_busy_buffers_size 32k;
+}

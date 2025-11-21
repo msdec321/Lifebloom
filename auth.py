@@ -6,6 +6,7 @@ Authenticates as a user to access subscription features like archived reports
 
 import os
 import json
+import time
 import webbrowser
 import requests
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -22,6 +23,11 @@ REDIRECT_URI = "http://localhost:8080/callback"
 AUTH_URL = "https://www.warcraftlogs.com/oauth/authorize"
 TOKEN_URL = "https://www.warcraftlogs.com/oauth/token"
 TOKEN_FILE = ".token.json"
+
+# Request timeout and retry configuration
+REQUEST_TIMEOUT = 30  # seconds
+MAX_RETRIES = 3
+RETRY_DELAY = 2  # seconds between retries
 
 # Global variable to store the authorization code
 auth_code = None
@@ -126,22 +132,49 @@ def exchange_code_for_token(code):
     """
     print("Exchanging authorization code for access token...")
 
-    response = requests.post(
-        TOKEN_URL,
-        data={
-            'grant_type': 'authorization_code',
-            'code': code,
-            'redirect_uri': REDIRECT_URI
-        },
-        auth=(CLIENT_ID, CLIENT_SECRET)
-    )
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = requests.post(
+                TOKEN_URL,
+                data={
+                    'grant_type': 'authorization_code',
+                    'code': code,
+                    'redirect_uri': REDIRECT_URI
+                },
+                auth=(CLIENT_ID, CLIENT_SECRET),
+                timeout=REQUEST_TIMEOUT
+            )
 
-    if response.status_code == 200:
-        token_data = response.json()
-        print("✓ Access token received!\n")
-        return token_data
-    else:
-        raise Exception(f"Failed to get access token: {response.status_code} - {response.text}")
+            if response.status_code == 200:
+                token_data = response.json()
+                print("✓ Access token received!\n")
+                return token_data
+            else:
+                error_msg = f"Failed to get access token: {response.status_code} - {response.text}"
+                if attempt < MAX_RETRIES - 1:
+                    print(f"  Attempt {attempt + 1}/{MAX_RETRIES} failed: {response.status_code}")
+                    print(f"  Retrying in {RETRY_DELAY}s...")
+                    time.sleep(RETRY_DELAY)
+                else:
+                    raise Exception(error_msg)
+
+        except requests.exceptions.Timeout:
+            if attempt < MAX_RETRIES - 1:
+                print(f"  Attempt {attempt + 1}/{MAX_RETRIES} timed out after {REQUEST_TIMEOUT}s")
+                print(f"  Retrying in {RETRY_DELAY}s...")
+                time.sleep(RETRY_DELAY)
+            else:
+                raise Exception(f"Token exchange timed out after {MAX_RETRIES} attempts")
+
+        except requests.exceptions.RequestException as e:
+            if attempt < MAX_RETRIES - 1:
+                print(f"  Attempt {attempt + 1}/{MAX_RETRIES} failed: {e}")
+                print(f"  Retrying in {RETRY_DELAY}s...")
+                time.sleep(RETRY_DELAY)
+            else:
+                raise Exception(f"Token exchange failed after {MAX_RETRIES} attempts: {e}")
+
+    raise Exception("Failed to exchange code for token after all retries")
 
 
 def save_token(token_data):
@@ -166,21 +199,48 @@ def refresh_access_token(refresh_token):
     """
     print("Refreshing access token...")
 
-    response = requests.post(
-        TOKEN_URL,
-        data={
-            'grant_type': 'refresh_token',
-            'refresh_token': refresh_token
-        },
-        auth=(CLIENT_ID, CLIENT_SECRET)
-    )
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = requests.post(
+                TOKEN_URL,
+                data={
+                    'grant_type': 'refresh_token',
+                    'refresh_token': refresh_token
+                },
+                auth=(CLIENT_ID, CLIENT_SECRET),
+                timeout=REQUEST_TIMEOUT
+            )
 
-    if response.status_code == 200:
-        token_data = response.json()
-        print("✓ Access token refreshed!\n")
-        return token_data
-    else:
-        raise Exception(f"Failed to refresh token: {response.status_code} - {response.text}")
+            if response.status_code == 200:
+                token_data = response.json()
+                print("✓ Access token refreshed!\n")
+                return token_data
+            else:
+                error_msg = f"Failed to refresh token: {response.status_code} - {response.text}"
+                if attempt < MAX_RETRIES - 1:
+                    print(f"  Attempt {attempt + 1}/{MAX_RETRIES} failed: {response.status_code}")
+                    print(f"  Retrying in {RETRY_DELAY}s...")
+                    time.sleep(RETRY_DELAY)
+                else:
+                    raise Exception(error_msg)
+
+        except requests.exceptions.Timeout:
+            if attempt < MAX_RETRIES - 1:
+                print(f"  Attempt {attempt + 1}/{MAX_RETRIES} timed out after {REQUEST_TIMEOUT}s")
+                print(f"  Retrying in {RETRY_DELAY}s...")
+                time.sleep(RETRY_DELAY)
+            else:
+                raise Exception(f"Token refresh timed out after {MAX_RETRIES} attempts")
+
+        except requests.exceptions.RequestException as e:
+            if attempt < MAX_RETRIES - 1:
+                print(f"  Attempt {attempt + 1}/{MAX_RETRIES} failed: {e}")
+                print(f"  Retrying in {RETRY_DELAY}s...")
+                time.sleep(RETRY_DELAY)
+            else:
+                raise Exception(f"Token refresh failed after {MAX_RETRIES} attempts: {e}")
+
+    raise Exception("Failed to refresh token after all retries")
 
 
 def get_user_access_token(force_reauth=False):

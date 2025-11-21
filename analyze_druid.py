@@ -12,6 +12,7 @@ Example:
 """
 
 import sys
+import time
 import requests
 from datetime import datetime
 from collections import Counter
@@ -19,6 +20,9 @@ from auth import get_user_access_token
 
 # API Configuration
 API_URL = "https://www.warcraftlogs.com/api/v2/user"
+REQUEST_TIMEOUT = 30  # seconds
+MAX_RETRIES = 3
+INITIAL_RETRY_DELAY = 2  # seconds
 
 # Ability IDs
 LIFEBLOOM_ID = 33763
@@ -45,6 +49,83 @@ REGROWTH_IDS = {
 # Rotation tracking constants
 ROTATION_TIMEOUT = 7.0  # seconds
 CASTS_BETWEEN_SEPARATORS = 5
+
+
+def api_request_with_retry(query, variables=None, headers=None, query_description="API query"):
+    """
+    Execute an API request with timeout and retry logic.
+
+    Args:
+        query: GraphQL query string
+        variables: Optional query variables dict
+        headers: Request headers dict
+        query_description: Description for logging
+
+    Returns:
+        Response object if successful, None if all retries failed
+
+    Raises:
+        Exception: If all retries fail with non-timeout errors
+    """
+    payload = {"query": query}
+    if variables:
+        payload["variables"] = variables
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            print(f"    [{query_description}] Attempt {attempt + 1}/{MAX_RETRIES}...", end=" ")
+
+            response = requests.post(
+                API_URL,
+                json=payload,
+                headers=headers,
+                timeout=REQUEST_TIMEOUT
+            )
+
+            # Check for rate limiting (429) or server errors (5xx)
+            if response.status_code == 429:
+                print(f"Rate limited!")
+                if attempt < MAX_RETRIES - 1:
+                    delay = INITIAL_RETRY_DELAY * (2 ** attempt)
+                    print(f"    Waiting {delay}s before retry...")
+                    time.sleep(delay)
+                    continue
+                else:
+                    raise Exception(f"Rate limited after {MAX_RETRIES} attempts")
+
+            if response.status_code >= 500:
+                print(f"Server error ({response.status_code})!")
+                if attempt < MAX_RETRIES - 1:
+                    delay = INITIAL_RETRY_DELAY * (2 ** attempt)
+                    print(f"    Waiting {delay}s before retry...")
+                    time.sleep(delay)
+                    continue
+                else:
+                    raise Exception(f"Server error after {MAX_RETRIES} attempts: {response.status_code}")
+
+            print("OK")
+            return response
+
+        except requests.exceptions.Timeout:
+            print(f"Timeout!")
+            if attempt < MAX_RETRIES - 1:
+                delay = INITIAL_RETRY_DELAY * (2 ** attempt)
+                print(f"    Query timed out after {REQUEST_TIMEOUT}s. Waiting {delay}s before retry...")
+                time.sleep(delay)
+            else:
+                print(f"    Query failed after {MAX_RETRIES} timeout attempts. Skipping...")
+                raise Exception(f"Query timed out after {MAX_RETRIES} attempts")
+
+        except requests.exceptions.RequestException as e:
+            print(f"Request error: {e}")
+            if attempt < MAX_RETRIES - 1:
+                delay = INITIAL_RETRY_DELAY * (2 ** attempt)
+                print(f"    Waiting {delay}s before retry...")
+                time.sleep(delay)
+            else:
+                raise Exception(f"Request failed after {MAX_RETRIES} attempts: {e}")
+
+    return None
 
 
 def analyze_druid_performance(report_code, boss_name, player_name):
@@ -96,13 +177,14 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     }
     """
 
-    response = requests.post(
-        API_URL,
-        json={"query": fights_query, "variables": {"code": report_code}},
-        headers=headers
+    response = api_request_with_retry(
+        query=fights_query,
+        variables={"code": report_code},
+        headers=headers,
+        query_description="Fetch fights"
     )
 
-    if response.status_code != 200:
+    if not response or response.status_code != 200:
         raise Exception(f"Query failed: {response.status_code} - {response.text}")
 
     result = response.json()
@@ -183,9 +265,13 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     }}
     """
 
-    response = requests.post(API_URL, json={"query": composition_query}, headers=headers)
+    response = api_request_with_retry(
+        query=composition_query,
+        headers=headers,
+        query_description="Fetch healing composition"
+    )
 
-    if response.status_code != 200:
+    if not response or response.status_code != 200:
         raise Exception(f"Query failed: {response.status_code} - {response.text}")
 
     result = response.json()
@@ -297,9 +383,13 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     }}
     """
 
-    response = requests.post(API_URL, json={"query": buff_query}, headers=headers)
+    response = api_request_with_retry(
+        query=buff_query,
+        headers=headers,
+        query_description="Fetch buff events"
+    )
 
-    if response.status_code != 200:
+    if not response or response.status_code != 200:
         raise Exception(f"Query failed: {response.status_code} - {response.text}")
 
     result = response.json()
@@ -343,10 +433,14 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     }}
     """
 
-    response = requests.post(API_URL, json={"query": vt_query}, headers=headers)
+    response = api_request_with_retry(
+        query=vt_query,
+        headers=headers,
+        query_description="Check Vampiric Touch"
+    )
 
     has_vampiric_touch = False
-    if response.status_code == 200:
+    if response and response.status_code == 200:
         result = response.json()
         all_events = result.get("data", {}).get("reportData", {}).get("report", {}).get("events", {}).get("data", [])
         has_vampiric_touch = any(
@@ -370,10 +464,14 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     }}
     """
 
-    response = requests.post(API_URL, json={"query": lifebloom_query}, headers=headers)
+    response = api_request_with_retry(
+        query=lifebloom_query,
+        headers=headers,
+        query_description="Fetch Lifebloom uptime"
+    )
 
     lifebloom_uptime_percent = 0
-    if response.status_code == 200:
+    if response and response.status_code == 200:
         result = response.json()
         lifebloom_events = result.get("data", {}).get("reportData", {}).get("report", {}).get("events", {}).get("data", [])
 
@@ -425,14 +523,18 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     }}
     """
 
-    response = requests.post(API_URL, json={"query": healing_query}, headers=headers)
+    response = api_request_with_retry(
+        query=healing_query,
+        headers=headers,
+        query_description="Fetch healing data"
+    )
 
     lifebloom_hps = 0
     rejuvenation_hps = 0
     regrowth_total_hps = 0
     regrowth_by_rank = {}
 
-    if response.status_code == 200:
+    if response and response.status_code == 200:
         result = response.json()
         healing_table = result.get("data", {}).get("reportData", {}).get("report", {}).get("table", {})
 
@@ -501,7 +603,47 @@ def analyze_druid_performance(report_code, boss_name, player_name):
                             }
                             break
 
-    # ===== STEP 7: Identify tanks =====
+    # ===== STEP 7: Get raid damage taken =====
+    print("Querying raid damage taken...")
+
+    damage_taken_query = f"""
+    query {{
+      reportData {{
+        report(code: "{report_code}") {{
+          table(fightIDs: {[fight_id]}, dataType: DamageTaken)
+        }}
+      }}
+    }}
+    """
+
+    response = api_request_with_retry(
+        query=damage_taken_query,
+        headers=headers,
+        query_description="Fetch raid damage taken"
+    )
+
+    total_raid_damage_taken = 0
+    raid_damage_taken_per_second = 0
+
+    if response and response.status_code == 200:
+        result = response.json()
+        damage_table = result.get("data", {}).get("reportData", {}).get("report", {}).get("table", {})
+
+        if damage_table and "data" in damage_table:
+            damage_data = damage_table.get("data", {})
+            entries = damage_data.get("entries", [])
+
+            # Sum total damage taken by all players
+            for entry in entries:
+                total_raid_damage_taken += entry.get("total", 0)
+
+            # Calculate damage taken per second
+            if fight_duration_seconds > 0:
+                raid_damage_taken_per_second = total_raid_damage_taken / fight_duration_seconds
+
+    print(f"✓ Total raid damage taken: {total_raid_damage_taken:,} ({raid_damage_taken_per_second:.2f} per second)")
+
+    # ===== STEP 8: Identify tanks =====
     print("Identifying tanks...")
 
     combatant_query = f"""
@@ -514,12 +656,16 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     }}
     """
 
-    response = requests.post(API_URL, json={"query": combatant_query}, headers=headers)
+    response = api_request_with_retry(
+        query=combatant_query,
+        headers=headers,
+        query_description="Fetch player details"
+    )
 
     tanks = []
     tank_ids = set()
 
-    if response.status_code == 200:
+    if response and response.status_code == 200:
         result = response.json()
         player_details_data = result.get("data", {}).get("reportData", {}).get("report", {}).get("playerDetails", {})
         player_details = player_details_data.get("data", {}).get("playerDetails", {}) if isinstance(player_details_data, dict) else {}
@@ -535,7 +681,7 @@ def analyze_druid_performance(report_code, boss_name, player_name):
 
     print(f"✓ Identified {len(tanks)} tanks")
 
-    # ===== STEP 8: Build tank timeline from damage events =====
+    # ===== STEP 9: Build tank timeline from damage events =====
     print("Building tank timeline from boss melee swings...")
 
     damage_query = f"""
@@ -550,10 +696,14 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     }}
     """
 
-    response = requests.post(API_URL, json={"query": damage_query}, headers=headers)
+    response = api_request_with_retry(
+        query=damage_query,
+        headers=headers,
+        query_description="Fetch damage events"
+    )
 
     tank_timeline = []
-    if response.status_code == 200:
+    if response and response.status_code == 200:
         result = response.json()
         damage_events = result.get("data", {}).get("reportData", {}).get("report", {}).get("events", {}).get("data", [])
 
@@ -572,7 +722,7 @@ def analyze_druid_performance(report_code, boss_name, player_name):
 
     print(f"✓ Built tank timeline with {len(tank_timeline)} melee swings")
 
-    # ===== STEP 9: Get cast events =====
+    # ===== STEP 10: Get cast events =====
     print(f"Querying cast events for {player_name}...")
 
     casts_query = f"""
@@ -587,9 +737,13 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     }}
     """
 
-    response = requests.post(API_URL, json={"query": casts_query}, headers=headers)
+    response = api_request_with_retry(
+        query=casts_query,
+        headers=headers,
+        query_description="Fetch cast events"
+    )
 
-    if response.status_code != 200:
+    if not response or response.status_code != 200:
         raise Exception(f"Query failed: {response.status_code} - {response.text}")
 
     result = response.json()
@@ -615,9 +769,13 @@ def analyze_druid_performance(report_code, boss_name, player_name):
         }}
         """
 
-        response = requests.post(API_URL, json={"query": ability_query}, headers=headers)
+        response = api_request_with_retry(
+            query=ability_query,
+            headers=headers,
+            query_description=f"Fetch ability {ability_id}"
+        )
 
-        if response.status_code == 200:
+        if response and response.status_code == 200:
             result = response.json()
             ability_data = result.get("data", {}).get("gameData", {}).get("ability")
             if ability_data:
@@ -625,7 +783,7 @@ def analyze_druid_performance(report_code, boss_name, player_name):
             else:
                 ability_names[ability_id] = f"Unknown ({ability_id})"
 
-    # ===== STEP 10: Process cast events with rotation tracking =====
+    # ===== STEP 11: Process cast events with rotation tracking =====
     print("Processing cast events and rotation patterns...\n")
 
     def get_active_tank_at_time(timestamp, timeline):
@@ -816,15 +974,25 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     pattern_counts = Counter(rotation_patterns)
     sorted_patterns = sorted(pattern_counts.items(), key=lambda x: x[1], reverse=True)
 
+    # Calculate tank rotation percentage (rotations starting with 1+ LB on tank)
+    total_rotations = len(actual_rotations)
+    tank_rotations = sum(1 for s in actual_rotations if s['lb'] >= 1)
+    tank_rotation_percent = (tank_rotations / total_rotations * 100) if total_rotations > 0 else 0
+
+    # Determine if player is rotating on tank (70% threshold)
+    rotating_on_tank = tank_rotation_percent >= 70.0
+
     # Return all collected data
     return {
         "fight_id": fight_id,
+        "player_id": player_id,
         "is_kill": is_kill,
         "timestamp": fight_absolute_timestamp,
         "duration_minutes": duration_minutes,
         "duration_seconds": duration_seconds,
         "total_healers": total_healers,
         "healer_composition": healer_composition,
+        "raid_damage_taken_per_second": round(raid_damage_taken_per_second, 2),
         "player_name": player_name,
         "player_stats": player_stats,
         "player_trinkets": player_trinkets,
@@ -844,6 +1012,8 @@ def analyze_druid_performance(report_code, boss_name, player_name):
         "rotation_sections": rotation_sections,
         "actual_rotations": actual_rotations,
         "sorted_patterns": sorted_patterns,
+        "tank_rotation_percent": round(tank_rotation_percent, 2),
+        "rotating_on_tank": rotating_on_tank,
         "fight_start_time": fight_start_time
     }
 
