@@ -1,1 +1,1 @@
-web: uwsgi --http-socket :$PORT --module wsgi:app --master --processes 4 --threads 2
+web: gunicorn --bind 0.0.0.0:$PORT --workers 4 --threads 2 wsgi:app
