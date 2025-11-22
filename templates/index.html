@@ -512,6 +512,10 @@
             margin-bottom: 15px;
         }
 
+        .about-section.justified p {
+            text-align: justify;
+        }
+
         .about-section p:last-child {
             margin-bottom: 0;
         }
@@ -640,6 +644,7 @@
     <div class="sidebar">
         <div class="sidebar-tab active" onclick="switchTab('analysis')">Analysis Tool</div>
         <div class="sidebar-tab" onclick="switchTab('report')">Report Analyzer</div>
+        <div class="sidebar-tab" onclick="switchTab('theorycrafting')">Community Theorycrafting</div>
         <div class="sidebar-tab" onclick="switchTab('about')">About</div>
     </div>
 
@@ -1092,6 +1097,18 @@
             </div>
         </div>
 
+        <!-- Community Theorycrafting Tab -->
+        <div id="theorycraftingTab" class="tab-content">
+            <div class="container">
+                <h1>Community Theorycrafting</h1>
+
+                <div class="notice-banner">
+                    <h3>Coming Soon</h3>
+                    <p>This section will feature community-driven theorycrafting analyses, discussions, and findings about TBC Restoration Druid optimization.</p>
+                </div>
+            </div>
+        </div>
+
         <!-- About Tab -->
         <div id="aboutTab" class="tab-content">
             <div class="container">
@@ -1102,26 +1119,28 @@
                     <p>Lifebloom is an application that collects and structures TBC Resto Druid data from WarcraftLogs in order to help facilitate retrospective data analyses by and for the community. This app is still in development in preparation for the next iteration of TBC Classic.</p>
                 </div>
 
-                <div class="about-section">
+                <div class="about-section justified">
                     <h2>Motivation</h2>
-                    <p>The Burning Crusade is almost 20 years old. Despite so much time passing, I don't believe our collective understanding of Resto Druid has progressed significantly since 2007 - and that is <em>not</em> because the spec has been solved. With TBC Classic, I had hoped that the community would push beyond what was figured out during the original TBC and the private server era. Instead, what I observed was largely "re-discovery" of existing knowledge and recycled guides. The 2007 Elitist Jerks guide remains one of the most comprehensive Resto Druid resources available - not because it answered everything, but because we've barely tried to advance our knowledge of the class since then. I think we can do better.</p>
+                    <p>The Burning Crusade is almost 20 years old! 🎉 </p>
+                        
+                    <p>Despite so much time passing, I don't believe our collective understanding of Resto Druid has progressed significantly since 2007 - and not because the spec has been solved. With TBC Classic, I had hoped that the community would build upon existing knowledge from 2007 and the private server era, but instead what I observed was largely "re-discovery" and recycled guides, and very little theorycrafting or knowledge sharing. I think we can do better.</p>
                     <p>To illustrate, consider the following fundamental questions that I believe remain unanswered:</p>
                     <ul>
-                        <li>For a given encounter, is there an optimal haste rating threshold?</li>
+                        <li>For a given encounter, is there an optimal spell haste breakpoint?</li>
                         <li>For a given encounter, is there an optimal healing rotation?</li>
                     </ul>
-                    <p>These questions appear straightforward, yet after 20 years neither has a definitive answer. Here's my hot take: traditional theorycrafting alone will never resolve them.</p>
+                    <p>These questions appear straightforward, yet after 20 years neither has a definitive answer. Here's my hot take: traditional theorycrafting alone will never solve them.</p>
                     <p>The reason is multifaceted.</p>
                     <p>First, healer theorycrafting is inherently difficult. Raid encounters are complex environments with numerous confounding variables: healer count and composition, fight duration, access to Shadow Priest, etc. The optimal rotation for a 3-minute encounter may differ significantly from a 6-minute encounter due to mana constraints alone.</p>
-                    <p>Second, the community appears hesitant to engage in rigorous theorycrafting, and there's ongoing debate about whether HPS can even serve as a valid performance metric. While many factors affecting HPS are outside individual control, several are not—rotation choices, gearing decisions (+heal vs. haste), and more. By analyzing large datasets while controlling for confounding variables, we can isolate which rotations outperform others across different encounters and conditions.</p>
-                    <p>I don't believe these questions are unanswerable, but we need a new approach. That is the motivation for this tool: combining traditional theorycrafting with data-driven analysis to address fundamental questions and to advance our understanding of the spec.</p>
+                    <p>Second, the community is still split on whether HPS is a valid performance metric because of the confounding effects mentioned above. This has left us in a bit of theorycrafting “quagmire” - without an objective measure of performance, the community instead relies on intuition and hand-wavy arguments about what is good or not. There’s a very clear dogma in the community on the topic of HPS, and just mentioning the word gets you harassed and dogpiled on. I think the community is wrong.</p>
+                    <p>By analyzing large datasets while controlling for confounding variables we can isolate effects that you DO have control over - rotation, playstyle, gearing choices, haste breakpoints, etc. across different encounters and conditions. I don't believe these fundamental questions are unanswerable, but we need a new approach. That is the motivation for this tool: combining traditional theorycrafting with data-driven analyses to address fundamental questions and to advance our understanding of the spec.</p>
                 </div>
 
-                <div class="about-section author-section">
+                <div class="about-section author-section justified">
                     <img src="/static/icons/avatar.png" alt="Mercy" class="author-avatar">
                     <div class="author-content">
                         <h2>About the Author</h2>
-                        <p>Welcome readers! My name is Mercy (IGN Mercychan) and I've been playing TBC Resto Druid since c. 2017 from the private server era and through TBC Classic. I play this spec religiously, and in my opinion TBC was when the class design for resto druid was at its best. In real life I LARP as a Data Scientist. I'm hoping to bring together my experience in data science and my passion for this spec in order to help the community push our knowledge of TBC Resto Druid further.</p>
+                        <p>Welcome readers! My name is Mercy (IGN Mercychan) and I've been playing TBC Resto Druid religiously since c. 2017 from the private server era and through TBC Classic. In my opinion TBC was when the class design for Resto Druid was at its best. In my professional life I LARP as a Data Scientist, and I'm hoping to bring together my experience in data science and my passion for this spec in order to help the community push our knowledge of TBC Resto Druid further.</p>
                         <p>If you want to support this project, the best way that you can do that is by using the tool and discussing your insights with the community. The more people become aware of and use this tool for their own analyses, the more we can learn together. If you found the app useful, consider giving the repo a star!</p>
                         <p>If you want to report bugs, request additions to the tool or dataset, or even collab on an analysis, the best way to contact me is via Discord. I'm not always in the community servers but my DMs are open! Feel free to reach out.</p>
 
@@ -1139,7 +1158,7 @@
 
     <script>
         // Tab switching
-        function switchTab(tabName) {
+        function switchTab(tabName, updateHash = true) {
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
@@ -1154,14 +1173,38 @@
             if (tabName === 'analysis') {
                 document.getElementById('analysisTab').classList.add('active');
                 document.querySelector('.sidebar-tab:nth-child(1)').classList.add('active');
+                if (updateHash) window.location.hash = 'analysis';
             } else if (tabName === 'report') {
                 document.getElementById('reportTab').classList.add('active');
                 document.querySelector('.sidebar-tab:nth-child(2)').classList.add('active');
+                if (updateHash) window.location.hash = 'report-analyzer';
+            } else if (tabName === 'theorycrafting') {
+                document.getElementById('theorycraftingTab').classList.add('active');
+                document.querySelector('.sidebar-tab:nth-child(3)').classList.add('active');
+                if (updateHash) window.location.hash = 'theorycrafting';
             } else if (tabName === 'about') {
                 document.getElementById('aboutTab').classList.add('active');
-                document.querySelector('.sidebar-tab:nth-child(3)').classList.add('active');
+                document.querySelector('.sidebar-tab:nth-child(4)').classList.add('active');
+                if (updateHash) window.location.hash = 'about';
             }
         }
+
+        // Handle URL hash on page load and hash change
+        function handleHashChange() {
+            const hash = window.location.hash.slice(1); // Remove the '#'
+            if (hash === 'report-analyzer' || hash === 'report') {
+                switchTab('report', false);
+            } else if (hash === 'theorycrafting') {
+                switchTab('theorycrafting', false);
+            } else if (hash === 'about') {
+                switchTab('about', false);
+            } else {
+                switchTab('analysis', false);
+            }
+        }
+
+        // Listen for hash changes (back/forward browser buttons)
+        window.addEventListener('hashchange', handleHashChange);
 
         // Chart instances
         let hpsChart = null;
@@ -1656,6 +1699,9 @@
 
         // Load data on page load
         window.addEventListener('DOMContentLoaded', () => {
+            // Handle initial URL hash to show correct tab
+            handleHashChange();
+
             loadData();
 
             // Add click handlers to icon buttons
@@ -1747,7 +1793,7 @@
             const hps = ranking.hps || 0;
             document.getElementById('resultHPS').textContent = hps.toFixed(2);
             document.getElementById('resultRank').textContent =
-                ranking.rank ? `Rank ${ranking.rank} of ${ranking.totalParses} (${ranking.percentile}th percentile)` : '-';
+                ranking.rank ? `Rank ${ranking.rank} of ${ranking.totalParses} (${ranking.rankPercent}th percentile)` : '-';
 
             // Stats
             const stats = data.player_stats || {};
