@@ -2,7 +2,7 @@
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "uwsgi --http-socket :$PORT --module wsgi:app --master --processes 4 --threads 2"
+startCommand = "gunicorn --bind 0.0.0.0:$PORT --workers 4 --threads 2 wsgi:app"
 healthcheckPath = "/"
 healthcheckTimeout = 100
 restartPolicyType = "ON_FAILURE"
