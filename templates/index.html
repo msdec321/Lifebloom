@@ -600,6 +600,40 @@
             color: #667eea;
             font-style: italic;
         }
+
+        /* Loading spinner */
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #2a3f5f;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Healer class colors */
+        .healer-druid { color: #FF7C0A; }
+        .healer-paladin { color: #F48CBA; }
+        .healer-priest-holy { color: #FFFFFF; }
+        .healer-priest-disc { color: #FFFFFF; }
+        .healer-shaman { color: #0070DD; }
+
+        /* Tank class color */
+        .tank-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: #0f3460;
+            border: 1px solid #2a3f5f;
+            border-radius: 5px;
+            color: #C41E3A;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -813,7 +847,248 @@
         <div id="reportTab" class="tab-content">
             <div class="container">
                 <h1>Report Analyzer</h1>
-                <p style="color: #8b9dc3;">Report analyzer coming soon...</p>
+
+                <div class="notice-banner">
+                    <h3>Analyze Individual Reports</h3>
+                    <p>Enter a WarcraftLogs report code (or full URL), the boss name, and the Restoration Druid's name to get a comprehensive performance analysis including rotation patterns, buff tracking, and HPS breakdown.</p>
+                </div>
+
+                <hr class="section-divider">
+
+                <!-- Input Form -->
+                <div class="controls" id="analyzerForm">
+                    <div class="controls-title">Report Details</div>
+                    <div class="controls-row" style="flex-wrap: wrap; gap: 15px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <label for="reportCode">Report Code/URL:</label>
+                            <input type="text" id="reportCode" placeholder="e.g., wX7H9RtYJ48P1cdW" style="width: 280px;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <label for="bossName">Boss:</label>
+                            <select id="bossName" style="width: 180px;">
+                                <option value="Brutallus">Brutallus</option>
+                                <option value="Felmyst">Felmyst</option>
+                                <option value="Eredar Twins">Eredar Twins</option>
+                                <option value="M'uru">M'uru</option>
+                                <option value="Kil'jaeden">Kil'jaeden</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <label for="playerName">Player Name:</label>
+                            <input type="text" id="playerName" placeholder="e.g., Mercychann" style="width: 180px;">
+                        </div>
+                        <button onclick="analyzeReport()" id="analyzeBtn">Analyze</button>
+                    </div>
+                </div>
+
+                <!-- Loading Indicator -->
+                <div id="analyzerLoading" style="display: none; text-align: center; padding: 40px;">
+                    <div style="color: #667eea; font-size: 1.2em; margin-bottom: 10px;">Analyzing report...</div>
+                    <div style="color: #8b9dc3;">This may take 10-30 seconds depending on the report</div>
+                    <div class="loading-spinner" style="margin-top: 20px;"></div>
+                </div>
+
+                <!-- Error Display -->
+                <div id="analyzerError" style="display: none;" class="notice-banner" style="border-color: #ef4444;">
+                    <h3 style="color: #ef4444;">Error</h3>
+                    <p id="errorMessage" style="color: #fca5a5;"></p>
+                </div>
+
+                <!-- Results Container -->
+                <div id="analyzerResults" style="display: none;">
+                    <!-- Encounter Info -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>Encounter Date</h3>
+                            <div class="value" id="resultDate">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Duration</h3>
+                            <div class="value" id="resultDuration">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Total Healers</h3>
+                            <div class="value" id="resultHealers">-</div>
+                        </div>
+                    </div>
+
+                    <!-- Player Performance -->
+                    <div class="table-container" style="margin-bottom: 20px;">
+                        <div class="table-header">
+                            <div class="table-title">Player Performance</div>
+                            <a id="reportLink" href="#" target="_blank" style="padding: 8px 16px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; font-weight: 600;">View on WarcraftLogs</a>
+                        </div>
+                        <div class="stats-grid" style="margin-bottom: 0;">
+                            <div class="stat-card" style="box-shadow: none;">
+                                <h3>Player</h3>
+                                <div class="value" style="font-size: 1.5em;" id="resultPlayerName">-</div>
+                                <div style="color: #8b9dc3; margin-top: 5px;" id="resultPlayerServer">-</div>
+                            </div>
+                            <div class="stat-card" style="box-shadow: none;">
+                                <h3>HPS</h3>
+                                <div class="value" style="color: #10b981;" id="resultHPS">-</div>
+                                <div style="color: #8b9dc3; margin-top: 5px;" id="resultRank">-</div>
+                            </div>
+                            <div class="stat-card" style="box-shadow: none;">
+                                <h3>Stats</h3>
+                                <div style="color: #fff; font-size: 1em;">
+                                    <span id="resultIntellect">-</span> Int |
+                                    <span id="resultSpirit">-</span> Spirit |
+                                    <span id="resultHaste">-</span> Haste
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Buffs & Resources -->
+                    <div class="table-container" style="margin-bottom: 20px;">
+                        <div class="table-header">
+                            <div class="table-title">Buffs & Resources</div>
+                        </div>
+                        <div class="stats-grid" style="margin-bottom: 0;">
+                            <div class="stat-card" style="box-shadow: none;">
+                                <h3>Vampiric Touch</h3>
+                                <div id="resultVT">-</div>
+                            </div>
+                            <div class="stat-card" style="box-shadow: none;">
+                                <h3>Innervate Count</h3>
+                                <div class="value" id="resultInnervate">-</div>
+                            </div>
+                            <div class="stat-card" style="box-shadow: none;">
+                                <h3>Bloodlust/Heroism</h3>
+                                <div id="resultBL">-</div>
+                            </div>
+                            <div class="stat-card" style="box-shadow: none;">
+                                <h3>Nature's Grace</h3>
+                                <div id="resultNG">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trinkets -->
+                    <div class="table-container" style="margin-bottom: 20px;">
+                        <div class="table-header">
+                            <div class="table-title">Trinkets</div>
+                        </div>
+                        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 200px;">
+                                <div style="color: #8b9dc3; font-size: 0.9em; margin-bottom: 5px;">Trinket 1</div>
+                                <div style="color: #fff; font-weight: 600;" id="resultTrinket1">-</div>
+                            </div>
+                            <div style="flex: 1; min-width: 200px;">
+                                <div style="color: #8b9dc3; font-size: 0.9em; margin-bottom: 5px;">Trinket 2</div>
+                                <div style="color: #fff; font-weight: 600;" id="resultTrinket2">-</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- HoT Breakdown -->
+                    <div class="table-container" style="margin-bottom: 20px;">
+                        <div class="table-header">
+                            <div class="table-title">HoT Breakdown</div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Spell</th>
+                                    <th>HPS</th>
+                                    <th>% of Total</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong style="color: #10b981;">Lifebloom</strong></td>
+                                    <td id="resultLBHPS">-</td>
+                                    <td id="resultLBPercent">-</td>
+                                    <td id="resultLBUptime">-</td>
+                                </tr>
+                                <tr>
+                                    <td><strong style="color: #f472b6;">Rejuvenation</strong></td>
+                                    <td id="resultRejuvHPS">-</td>
+                                    <td id="resultRejuvPercent">-</td>
+                                    <td>-</td>
+                                </tr>
+                                <tr>
+                                    <td><strong style="color: #60a5fa;">Regrowth</strong></td>
+                                    <td id="resultRGHPS">-</td>
+                                    <td id="resultRGPercent">-</td>
+                                    <td id="resultRGRanks">-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Healer Composition -->
+                    <div class="table-container" style="margin-bottom: 20px;">
+                        <div class="table-header">
+                            <div class="table-title">Healer Composition</div>
+                        </div>
+                        <div id="healerCompList" style="display: flex; flex-wrap: wrap; gap: 20px;"></div>
+                    </div>
+
+                    <!-- Rotation Analysis -->
+                    <div class="table-container" style="margin-bottom: 20px;">
+                        <div class="table-header">
+                            <div class="table-title">Rotation Analysis</div>
+                            <button class="collapse-btn" onclick="toggleRotationTable()">Collapse</button>
+                        </div>
+                        <div class="stats-grid" style="margin-bottom: 20px;">
+                            <div class="stat-card" style="box-shadow: none;">
+                                <h3>Total Rotations</h3>
+                                <div class="value" id="resultRotationCount">-</div>
+                            </div>
+                            <div class="stat-card" style="box-shadow: none;">
+                                <h3>Tank Rotation %</h3>
+                                <div class="value" id="resultTankRotation">-</div>
+                            </div>
+                            <div class="stat-card" style="box-shadow: none;">
+                                <h3>Rotating on Tank</h3>
+                                <div id="resultRotatingOnTank">-</div>
+                            </div>
+                        </div>
+                        <div id="rotationTableContent">
+                            <h4 style="color: #8b9dc3; margin-bottom: 15px;">Top Rotation Patterns</h4>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Pattern</th>
+                                        <th>Count</th>
+                                        <th>Percentage</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rotationPatternsBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Cast Sequence -->
+                    <div class="table-container" style="margin-bottom: 20px;">
+                        <div class="table-header">
+                            <div class="table-title">
+                                <span>Cast Sequence</span>
+                                <span class="filtered-count" id="castCount"></span>
+                            </div>
+                            <button class="collapse-btn" id="castSequenceCollapseBtn" onclick="toggleCastSequence()">Collapse</button>
+                        </div>
+                        <div id="castSequenceContent" style="max-height: 500px; overflow-y: auto;">
+                            <table>
+                                <thead style="position: sticky; top: 0; background: #0f3460;">
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Spell</th>
+                                        <th>Target</th>
+                                        <th>Active Tank</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="castSequenceBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
             </div>
         </div>
 
@@ -1395,6 +1670,265 @@
             // Dreamstate button does nothing for now
             document.getElementById('dreamstateBtn').addEventListener('click', () => {
                 // No action yet
+            });
+        });
+
+        // ===== REPORT ANALYZER FUNCTIONS =====
+
+        async function analyzeReport() {
+            const reportCode = document.getElementById('reportCode').value.trim();
+            const bossName = document.getElementById('bossName').value.trim();
+            const playerName = document.getElementById('playerName').value.trim();
+
+            // Validate inputs
+            if (!reportCode || !bossName || !playerName) {
+                showAnalyzerError('Please fill in all fields: Report Code, Boss Name, and Player Name.');
+                return;
+            }
+
+            // Show loading, hide results and error
+            document.getElementById('analyzerLoading').style.display = 'block';
+            document.getElementById('analyzerResults').style.display = 'none';
+            document.getElementById('analyzerError').style.display = 'none';
+            document.getElementById('analyzeBtn').disabled = true;
+            document.getElementById('analyzeBtn').textContent = 'Analyzing...';
+
+            try {
+                const response = await fetch('/api/analyze-report', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        report_code: reportCode,
+                        boss_name: bossName,
+                        player_name: playerName
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Analysis failed');
+                }
+
+                displayAnalysisResults(data);
+
+            } catch (error) {
+                showAnalyzerError(error.message);
+            } finally {
+                document.getElementById('analyzerLoading').style.display = 'none';
+                document.getElementById('analyzeBtn').disabled = false;
+                document.getElementById('analyzeBtn').textContent = 'Analyze';
+            }
+        }
+
+        function showAnalyzerError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('analyzerError').style.display = 'block';
+            document.getElementById('analyzerResults').style.display = 'none';
+        }
+
+        function displayAnalysisResults(data) {
+            // Show results container
+            document.getElementById('analyzerResults').style.display = 'block';
+
+            // Encounter info
+            document.getElementById('resultDate').textContent = data.date;
+            document.getElementById('resultDuration').textContent = data.duration;
+            document.getElementById('resultHealers').textContent = data.total_healers;
+
+            // Player performance
+            document.getElementById('resultPlayerName').textContent = data.player_name;
+            const ranking = data.player_ranking || {};
+            document.getElementById('resultPlayerServer').textContent =
+                ranking.server ? `${ranking.server} (${ranking.region})` : 'Unknown Server';
+
+            const hps = ranking.hps || 0;
+            document.getElementById('resultHPS').textContent = hps.toFixed(2);
+            document.getElementById('resultRank').textContent =
+                ranking.rank ? `Rank ${ranking.rank} of ${ranking.totalParses} (${ranking.percentile}th percentile)` : '-';
+
+            // Stats
+            const stats = data.player_stats || {};
+            document.getElementById('resultIntellect').textContent = stats.has_stats ? stats.intellect : '?';
+            document.getElementById('resultSpirit').textContent = stats.has_stats ? stats.spirit : '?';
+            document.getElementById('resultHaste').textContent = stats.has_stats ? stats.haste : '?';
+
+            // Buffs
+            document.getElementById('resultVT').innerHTML = data.has_vampiric_touch
+                ? '<span class="badge badge-yes">Yes</span>'
+                : '<span class="badge badge-no">No</span>';
+            document.getElementById('resultInnervate').textContent = data.innervate_count;
+            document.getElementById('resultBL').innerHTML = data.has_bloodlust
+                ? '<span class="badge badge-yes">Yes</span>'
+                : '<span class="badge badge-no">No</span>';
+            document.getElementById('resultNG').innerHTML = data.has_natures_grace
+                ? '<span class="badge badge-yes">Yes</span>'
+                : '<span class="badge badge-no">No</span>';
+
+            // Trinkets
+            const trinkets = data.player_trinkets || {};
+            const trinketList = trinkets.trinkets || [];
+            document.getElementById('resultTrinket1').textContent =
+                trinketList[0] ? `${trinketList[0].name} (ID: ${trinketList[0].id})` : 'Unknown';
+            document.getElementById('resultTrinket2').textContent =
+                trinketList[1] ? `${trinketList[1].name} (ID: ${trinketList[1].id})` : 'Unknown';
+
+            // HoT Breakdown
+            const totalHPS = hps || 1; // avoid division by zero
+            document.getElementById('resultLBHPS').textContent = data.lifebloom_hps.toFixed(2);
+            document.getElementById('resultLBPercent').textContent = ((data.lifebloom_hps / totalHPS) * 100).toFixed(1) + '%';
+            document.getElementById('resultLBUptime').textContent = `${data.lifebloom_uptime_percent}% uptime`;
+
+            document.getElementById('resultRejuvHPS').textContent = data.rejuvenation_hps.toFixed(2);
+            document.getElementById('resultRejuvPercent').textContent = ((data.rejuvenation_hps / totalHPS) * 100).toFixed(1) + '%';
+
+            document.getElementById('resultRGHPS').textContent = data.regrowth_total_hps.toFixed(2);
+            document.getElementById('resultRGPercent').textContent = ((data.regrowth_total_hps / totalHPS) * 100).toFixed(1) + '%';
+
+            // Regrowth rank breakdown
+            const rgRanks = data.regrowth_by_rank || {};
+            const rgRankText = Object.entries(rgRanks)
+                .filter(([rank, hps]) => hps > 0)
+                .map(([rank, hps]) => `R${rank}: ${hps.toFixed(1)}`)
+                .join(', ');
+            document.getElementById('resultRGRanks').textContent = rgRankText || '-';
+
+            // Healer Composition
+            const healerComp = data.healer_composition || {};
+            const healerCompHtml = Object.entries(healerComp).map(([type, players]) => {
+                const colorClass = type.includes('Druid') ? 'healer-druid'
+                    : type.includes('Paladin') ? 'healer-paladin'
+                    : type.includes('Holy Priest') ? 'healer-priest-holy'
+                    : type.includes('Discipline') ? 'healer-priest-disc'
+                    : type.includes('Shaman') ? 'healer-shaman' : '';
+
+                return `
+                    <div style="flex: 1; min-width: 150px;">
+                        <div style="color: #8b9dc3; font-size: 0.9em; margin-bottom: 5px;">${type} (${players.length})</div>
+                        <div class="${colorClass}" style="font-weight: 600;">
+                            ${players.length > 0 ? players.join(', ') : 'None'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            document.getElementById('healerCompList').innerHTML = healerCompHtml;
+
+            // Rotation Analysis
+            document.getElementById('resultRotationCount').textContent = data.rotation_count;
+            document.getElementById('resultTankRotation').textContent = data.tank_rotation_percent + '%';
+            document.getElementById('resultRotatingOnTank').innerHTML = data.rotating_on_tank
+                ? '<span class="badge badge-yes">Yes</span>'
+                : '<span class="badge badge-no">No</span>';
+
+            // Rotation patterns table
+            const patterns = data.sorted_patterns || [];
+            const totalRotations = data.actual_rotations ? data.actual_rotations.length : 1;
+            const patternsHtml = patterns.slice(0, 10).map((pattern, index) => {
+                const [notation, count] = pattern;
+                const percentage = ((count / totalRotations) * 100).toFixed(1);
+                return `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td><strong>${notation}</strong></td>
+                        <td>${count}</td>
+                        <td>${percentage}%</td>
+                    </tr>
+                `;
+            }).join('');
+            document.getElementById('rotationPatternsBody').innerHTML = patternsHtml || '<tr><td colspan="4">No rotation data</td></tr>';
+
+            // Report link
+            document.getElementById('reportLink').href = data.report_link;
+
+            // Cast Sequence
+            const castData = data.cast_data || [];
+            document.getElementById('castCount').textContent = `(${castData.length} casts)`;
+
+            let rotationNumber = 0;
+            const castSequenceHtml = castData.map((cast, index) => {
+                // Determine action string
+                let actionStr = '';
+                if (cast.rotation_start) {
+                    actionStr = '<span style="color: #10b981; font-weight: 600;">Rotation started</span>';
+                } else if (cast.instant_cast) {
+                    actionStr = 'Instant cast';
+                } else if (cast.regrowth) {
+                    actionStr = 'Regrowth';
+                } else {
+                    actionStr = '-';
+                }
+
+                // Highlight lifebloom on tank
+                const spellStyle = cast.rotation_start ? 'color: #10b981; font-weight: 600;' : '';
+
+                // Add separator row before rotation starts (except the very first cast)
+                let separatorRow = '';
+                if (cast.rotation_start && index > 0) {
+                    rotationNumber++;
+                    separatorRow = `
+                        <tr style="background: #0f3460; border-top: 2px solid #667eea;">
+                            <td colspan="5" style="padding: 8px; color: #667eea; font-weight: 600; text-align: center;">
+                                Rotation #${rotationNumber}
+                            </td>
+                        </tr>
+                    `;
+                } else if (cast.rotation_start && index === 0) {
+                    rotationNumber++;
+                }
+
+                return `
+                    ${separatorRow}
+                    <tr>
+                        <td>${cast.time.toFixed(2)}s</td>
+                        <td style="${spellStyle}">${cast.spell}</td>
+                        <td>${cast.target}</td>
+                        <td style="color: #C41E3A;">${cast.active_tank}</td>
+                        <td>${actionStr}</td>
+                    </tr>
+                `;
+            }).join('');
+            document.getElementById('castSequenceBody').innerHTML = castSequenceHtml || '<tr><td colspan="5">No cast data</td></tr>';
+        }
+
+        function toggleRotationTable() {
+            const content = document.getElementById('rotationTableContent');
+            const btn = content.previousElementSibling.previousElementSibling.querySelector('.collapse-btn');
+
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                btn.textContent = 'Collapse';
+            } else {
+                content.style.display = 'none';
+                btn.textContent = 'Expand';
+            }
+        }
+
+        function toggleCastSequence() {
+            const content = document.getElementById('castSequenceContent');
+            const btn = document.getElementById('castSequenceCollapseBtn');
+
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                btn.textContent = 'Collapse';
+            } else {
+                content.style.display = 'none';
+                btn.textContent = 'Expand';
+            }
+        }
+
+        // Allow Enter key to submit the form
+        document.addEventListener('DOMContentLoaded', function() {
+            ['reportCode', 'bossName', 'playerName'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('keypress', function(e) {
+                        if (e.key === 'Enter') {
+                            analyzeReport();
+                        }
+                    });
+                }
             });
         });
     </script>

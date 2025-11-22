@@ -1,6 +1,8 @@
 from flask import Flask, render_template, jsonify, request
 import pandas as pd
 import os
+import re
+from analyze_druid import analyze_druid_performance
 
 app = Flask(__name__)
 
@@ -139,6 +141,92 @@ def get_top_n(n):
         'data': data_records,
         'total_count': total_count
     })
+
+@app.route('/api/analyze-report', methods=['POST'])
+def analyze_report():
+    """API endpoint to analyze a specific report for a player"""
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    report_input = data.get('report_code', '').strip()
+    boss_name = data.get('boss_name', '').strip()
+    player_name = data.get('player_name', '').strip()
+
+    # Validate required fields
+    if not report_input:
+        return jsonify({'error': 'Report code is required'}), 400
+    if not boss_name:
+        return jsonify({'error': 'Boss name is required'}), 400
+    if not player_name:
+        return jsonify({'error': 'Player name is required'}), 400
+
+    # Extract report code from URL if a full URL was provided
+    report_code = report_input
+    url_match = re.search(r'warcraftlogs\.com/reports/([a-zA-Z0-9]+)', report_input)
+    if url_match:
+        report_code = url_match.group(1)
+
+    try:
+        # Call the analysis function
+        result = analyze_druid_performance(report_code, boss_name, player_name)
+
+        # Convert datetime-like fields for JSON serialization
+        from datetime import datetime
+
+        # Build response with formatted data
+        response_data = {
+            'success': True,
+            'report_code': report_code,
+            'fight_id': result['fight_id'],
+            'player_id': result['player_id'],
+            'is_kill': result['is_kill'],
+            'date': datetime.fromtimestamp(result['timestamp'] / 1000).strftime("%Y-%m-%d"),
+            'duration': f"{result['duration_minutes']}m {result['duration_seconds']}s",
+            'duration_minutes': result['duration_minutes'],
+            'duration_seconds': result['duration_seconds'],
+            'total_healers': result['total_healers'],
+            'healer_composition': result['healer_composition'],
+            'raid_damage_taken_per_second': result['raid_damage_taken_per_second'],
+            'player_name': result['player_name'],
+            'player_stats': result['player_stats'],
+            'player_trinkets': result['player_trinkets'],
+            'player_ranking': result['player_ranking'],
+            'has_vampiric_touch': result['has_vampiric_touch'],
+            'innervate_count': result['innervate_count'],
+            'has_bloodlust': result['has_bloodlust'],
+            'has_natures_grace': result['has_natures_grace'],
+            'lifebloom_uptime_percent': result['lifebloom_uptime_percent'],
+            'lifebloom_hps': result['lifebloom_hps'],
+            'rejuvenation_hps': result['rejuvenation_hps'],
+            'regrowth_total_hps': result['regrowth_total_hps'],
+            'regrowth_by_rank': result['regrowth_by_rank'],
+            'tanks': result['tanks'],
+            'rotation_count': result['rotation_count'],
+            'actual_rotations': result['actual_rotations'],
+            'sorted_patterns': result['sorted_patterns'],
+            'tank_rotation_percent': result['tank_rotation_percent'],
+            'rotating_on_tank': result['rotating_on_tank'],
+            'cast_data': result['cast_data'],
+            'report_link': f"https://classic.warcraftlogs.com/reports/{report_code}?fight={result['fight_id']}&source={result['player_id']}&type=healing"
+        }
+
+        return jsonify(response_data)
+
+    except Exception as e:
+        error_message = str(e)
+
+        # Provide more user-friendly error messages
+        if 'not found' in error_message.lower():
+            return jsonify({'error': f'Could not find the specified data: {error_message}'}), 404
+        elif 'token' in error_message.lower() or 'auth' in error_message.lower():
+            return jsonify({'error': 'Authentication error. Please ensure your WarcraftLogs credentials are configured.'}), 401
+        elif 'rate limit' in error_message.lower():
+            return jsonify({'error': 'Rate limit exceeded. Please wait a few minutes and try again.'}), 429
+        else:
+            return jsonify({'error': f'Analysis failed: {error_message}'}), 500
+
 
 if __name__ == '__main__':
     # Only for local development - use uWSGI for production

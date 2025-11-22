@@ -815,6 +815,10 @@ def analyze_druid_performance(report_code, boss_name, player_name):
             continue
         if "Healing Touch" in ability_name:
             continue
+        if "Dark Rune" in ability_name:
+            continue
+        if "Hopped Up" in ability_name:
+            continue
 
         target_name = actor_names.get(target_id, f"Unknown (ID: {target_id})") if target_id else "-"
         active_tank_name, active_tank_id = get_active_tank_at_time(timestamp, tank_timeline)
@@ -836,6 +840,8 @@ def analyze_druid_performance(report_code, boss_name, player_name):
             (ability_id == INNERVATE_ID and event_type == "cast")
         )
 
+        is_regrowth = "Regrowth" in ability_name
+
         if is_rotation_start:
             rotation_count += 1
 
@@ -848,6 +854,7 @@ def analyze_druid_performance(report_code, boss_name, player_name):
             "ability_id": ability_id,
             "rotation_start": is_rotation_start,
             "instant_cast": is_instant_cast,
+            "regrowth": is_regrowth,
             "rotation_number": rotation_count if is_rotation_start else None
         })
 
