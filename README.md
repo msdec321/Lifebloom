@@ -1,7 +1,11 @@
 # Lifebloom - A WarcraftLogs Restoration Druid Analyzer
 
 Welcome to **Lifebloom**, an open-source data fetching and analysis tool for TBC Restoration Druids.
-This tool fetches report data from WarcraftLogs via their GraphQL API, creates publicly available structured datasets, and provides a web-application tool for you to easily do your own analyses. Comprising this application are the following core components:
+This tool fetches report data from WarcraftLogs via their GraphQL API, creates publicly available structured datasets, and provides a web-application tool for you to easily do your own analyses. 
+
+A live version of the web tool is publicly available at: https://tbc-lifebloom.com/
+
+Comprising this application are the following core components:
 
 - **Data Fetcher** - Fetches report-level data from a specified set of logs for a specific encounter.
    - In order to run the fetcher on legacy reports, you must have a WarcraftLogs "Gold" tier subscription with a valid OAuth client ID and client secret. However, readers are welcome to use the already fetched datasets that I've collected. Legacy datasets from the original TBC Classic can be found within the "data/legacy/" directory.
