@@ -266,12 +266,22 @@ def get_user_access_token(force_reauth=False):
     # Check if running in production (Railway sets RAILWAY_ENVIRONMENT)
     is_production = os.getenv('RAILWAY_ENVIRONMENT') is not None or os.getenv('PRODUCTION') is not None
 
+    # Check if token is from environment variable (don't refresh these - they're valid for 1 year)
+    env_token = os.getenv('WARCRAFTLOGS_TOKEN_JSON')
+    token_from_env = env_token is not None
+
     if not force_reauth:
         # Try to load existing token
         token_data = load_token()
 
-        if token_data:
-            # Check if we have a refresh token
+        if token_data and 'access_token' in token_data:
+            # If token is from environment variable, use it directly without refreshing
+            # These tokens are valid for 1 year and refreshing would invalidate the env var token
+            if token_from_env:
+                print("Using access token from environment variable...")
+                return token_data['access_token']
+
+            # For file-based tokens, try to refresh to keep them fresh
             if 'refresh_token' in token_data:
                 try:
                     # Try to refresh the token
@@ -280,16 +290,11 @@ def get_user_access_token(force_reauth=False):
                     return new_token_data['access_token']
                 except Exception as e:
                     print(f"Failed to refresh token: {e}")
-                    if is_production:
-                        # In production, we can't do interactive auth, so try the existing token
-                        if 'access_token' in token_data:
-                            print("Production mode: Using existing access token...")
-                            return token_data['access_token']
-                        else:
-                            raise Exception("Token refresh failed and no valid access token available. Please re-authenticate locally and redeploy.")
-                    print("Will perform full authentication...\n")
-            elif 'access_token' in token_data:
-                # Use existing access token (might be expired)
+                    # Fall back to existing token
+                    print("Using existing access token...")
+                    return token_data['access_token']
+            else:
+                # No refresh token, just use the access token
                 print("Using existing access token from file...")
                 return token_data['access_token']
 
