@@ -185,7 +185,16 @@ def save_token(token_data):
 
 
 def load_token():
-    """Load token data from file"""
+    """Load token data from file or environment variable"""
+    # First, check for token in environment variable (for production deployments)
+    env_token = os.getenv('WARCRAFTLOGS_TOKEN_JSON')
+    if env_token:
+        try:
+            return json.loads(env_token)
+        except json.JSONDecodeError:
+            print("Warning: WARCRAFTLOGS_TOKEN_JSON environment variable is not valid JSON")
+
+    # Fall back to file
     if os.path.exists(TOKEN_FILE):
         with open(TOKEN_FILE, 'r') as f:
             return json.load(f)
@@ -254,6 +263,9 @@ def get_user_access_token(force_reauth=False):
     Returns:
         Access token string
     """
+    # Check if running in production (Railway sets RAILWAY_ENVIRONMENT)
+    is_production = os.getenv('RAILWAY_ENVIRONMENT') is not None or os.getenv('PRODUCTION') is not None
+
     if not force_reauth:
         # Try to load existing token
         token_data = load_token()
@@ -268,11 +280,22 @@ def get_user_access_token(force_reauth=False):
                     return new_token_data['access_token']
                 except Exception as e:
                     print(f"Failed to refresh token: {e}")
+                    if is_production:
+                        # In production, we can't do interactive auth, so try the existing token
+                        if 'access_token' in token_data:
+                            print("Production mode: Using existing access token...")
+                            return token_data['access_token']
+                        else:
+                            raise Exception("Token refresh failed and no valid access token available. Please re-authenticate locally and redeploy.")
                     print("Will perform full authentication...\n")
             elif 'access_token' in token_data:
                 # Use existing access token (might be expired)
                 print("Using existing access token from file...")
                 return token_data['access_token']
+
+    # In production, don't attempt interactive OAuth
+    if is_production:
+        raise Exception("Interactive authentication not available in production. Please authenticate locally first, then deploy with a valid .token.json file.")
 
     # Perform full OAuth flow
     print("=" * 70)
