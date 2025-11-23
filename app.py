@@ -205,6 +205,7 @@ def analyze_report():
             'tanks': result['tanks'],
             'rotation_count': result['rotation_count'],
             'actual_rotations': result['actual_rotations'],
+            'rotation_sections': result['rotation_sections'],
             'sorted_patterns': result['sorted_patterns'],
             'tank_rotation_percent': result['tank_rotation_percent'],
             'rotating_on_tank': result['rotating_on_tank'],

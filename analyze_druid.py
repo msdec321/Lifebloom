@@ -47,8 +47,45 @@ REGROWTH_IDS = {
 }
 
 # Rotation tracking constants
-ROTATION_TIMEOUT = 7.0  # seconds
+LIFEBLOOM_DURATION = 7.0  # seconds
+BASE_GCD = 1.5  # seconds at 0 haste
+HASTE_RATING_DIVISOR = 1577  # TBC haste rating conversion
+DEFAULT_ROTATION_TIMEOUT = 5.5  # fallback: 7.0 - 1.5 (0 haste GCD)
 CASTS_BETWEEN_SEPARATORS = 5
+
+
+def calculate_gcd(haste_rating):
+    """
+    Calculate Global Cooldown based on spell haste rating.
+
+    Formula: GCD = 1.5 / (1 + (Spell Haste Rating / 1577))
+
+    Args:
+        haste_rating: Player's spell haste rating
+
+    Returns:
+        GCD in seconds (minimum is typically 1.0s but we don't cap here)
+    """
+    if haste_rating <= 0:
+        return BASE_GCD
+    return BASE_GCD / (1 + (haste_rating / HASTE_RATING_DIVISOR))
+
+
+def calculate_rotation_timeout(haste_rating):
+    """
+    Calculate rotation timeout based on Lifebloom duration minus GCD.
+
+    The druid must refresh Lifebloom before it falls off, but they need
+    at least one GCD to cast. So the effective window is 7 - GCD seconds.
+
+    Args:
+        haste_rating: Player's spell haste rating
+
+    Returns:
+        Rotation timeout in seconds
+    """
+    gcd = calculate_gcd(haste_rating)
+    return LIFEBLOOM_DURATION - gcd
 
 
 def api_request_with_retry(query, variables=None, headers=None, query_description="API query"):
@@ -366,7 +403,27 @@ def analyze_druid_performance(report_code, boss_name, player_name):
                         "trinkets": trinkets,
                         "has_trinkets": len(trinkets) > 0
                     }
+
+                    # Correct for Scarab of the Infinite Cycle (ID: 28190)
+                    # WarcraftLogs incorrectly adds 320 Haste when this trinket is equipped
+                    SCARAB_OF_INFINITE_CYCLE_ID = 28190
+                    SCARAB_HASTE_CORRECTION = 320
+                    has_scarab = any(t.get("id") == SCARAB_OF_INFINITE_CYCLE_ID for t in trinkets)
+                    if has_scarab and player_stats.get("haste", 0) >= SCARAB_HASTE_CORRECTION:
+                        player_stats["haste"] = player_stats["haste"] - SCARAB_HASTE_CORRECTION
+
                 break
+
+    # Calculate rotation timeout based on player's haste
+    haste_rating = player_stats.get("haste", 0) if player_stats else 0
+    if haste_rating > 0:
+        player_gcd = calculate_gcd(haste_rating)
+        rotation_timeout = calculate_rotation_timeout(haste_rating)
+        print(f"✓ Player haste: {haste_rating} → GCD: {player_gcd:.3f}s → Rotation timeout: {rotation_timeout:.3f}s")
+    else:
+        player_gcd = BASE_GCD
+        rotation_timeout = DEFAULT_ROTATION_TIMEOUT
+        print(f"✓ No haste data available, using default timeout: {rotation_timeout}s")
 
     # ===== STEP 3: Get buff and resource events =====
     print("Querying buffs and resource events...")
@@ -807,6 +864,7 @@ def analyze_druid_performance(report_code, boss_name, player_name):
         ability_name = ability_names.get(ability_id, f"Unknown ({ability_id})")
         event_type = event.get("type", "unknown")
         target_id = event.get("targetID")
+        target_name = actor_names.get(target_id, f"Unknown (ID: {target_id})") if target_id else "-"
 
         # Filter out specific casts
         if "Regrowth" in ability_name and event_type == "cast":
@@ -819,8 +877,8 @@ def analyze_druid_performance(report_code, boss_name, player_name):
             continue
         if "Hopped Up" in ability_name:
             continue
-
-        target_name = actor_names.get(target_id, f"Unknown (ID: {target_id})") if target_id else "-"
+        if "Rebirth" in ability_name and target_name != "Environment":
+            continue
         active_tank_name, active_tank_id = get_active_tank_at_time(timestamp, tank_timeline)
         relative_time = (timestamp - fight_start_time) / 1000.0
 
@@ -840,7 +898,8 @@ def analyze_druid_performance(report_code, boss_name, player_name):
             (ability_id == INNERVATE_ID and event_type == "cast")
         )
 
-        is_regrowth = "Regrowth" in ability_name
+        # Treat Rebirth on Environment as Regrowth (likely a cancelled Regrowth cast)
+        is_regrowth = "Regrowth" in ability_name or ("Rebirth" in ability_name and target_name == "Environment")
 
         if is_rotation_start:
             rotation_count += 1
@@ -861,6 +920,9 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     cast_data.sort(key=lambda x: x["time"])
 
     # Build rotation sections
+    # Rules:
+    # 1) A rotation should only ever have at most one "Rotation started" row
+    # 2) "Rotation started" should always designate the start of a rotation
     rotation_sections = []
     section_start_time = 0
     section_type = "Rotation #1"
@@ -878,13 +940,53 @@ def analyze_druid_performance(report_code, boss_name, player_name):
             abbr_str = "LB"
         elif cast['instant_cast']:
             abbr_str = "I"
-        elif "Regrowth" in cast['spell']:
+        elif cast['regrowth']:
             abbr_str = "RG"
         else:
             abbr_str = ""
 
-        # Add separator before first rotation
-        if cast['rotation_start'] and not first_rotation_seen:
+        # Check if we need to end the current section and start a new one
+        should_end_section = False
+
+        # Rule: rotation_start ALWAYS starts a new section
+        if cast['rotation_start']:
+            if not first_rotation_seen:
+                # First rotation - save any pre-rotation casts as a section
+                if section_lb_count > 0 or section_i_count > 0 or section_rg_count > 0:
+                    rotation_sections.append({
+                        "type": section_type,
+                        "start_time": section_start_time,
+                        "end_time": cast['time'],
+                        "lb": section_lb_count,
+                        "i": section_i_count,
+                        "rg": section_rg_count
+                    })
+                first_rotation_seen = True
+                section_start_time = cast['time']
+                section_type = f"Rotation #{len(rotation_sections) + 1}"
+                section_lb_count = 0
+                section_i_count = 0
+                section_rg_count = 0
+            else:
+                # Subsequent rotation_start - always end current section if it has casts
+                if section_lb_count > 0 or section_i_count > 0 or section_rg_count > 0:
+                    should_end_section = True
+
+        # Rule: timeout ends the current rotation (only if not a rotation_start)
+        elif in_rotation and last_rotation_time is not None:
+            time_since_last_rotation = cast['time'] - last_rotation_time
+            if time_since_last_rotation >= rotation_timeout:
+                should_end_section = True
+                in_rotation = False
+                casts_since_rotation_end = 0
+
+        # Rule: add separator every 5 casts when not in rotation
+        elif not in_rotation and first_rotation_seen:
+            if casts_since_rotation_end > 0 and casts_since_rotation_end % CASTS_BETWEEN_SEPARATORS == 0:
+                should_end_section = True
+
+        # End the current section if needed
+        if should_end_section:
             rotation_sections.append({
                 "type": section_type,
                 "start_time": section_start_time,
@@ -893,50 +995,11 @@ def analyze_druid_performance(report_code, boss_name, player_name):
                 "i": section_i_count,
                 "rg": section_rg_count
             })
-            first_rotation_seen = True
             section_start_time = cast['time']
             section_type = f"Rotation #{len(rotation_sections) + 1}"
             section_lb_count = 0
             section_i_count = 0
             section_rg_count = 0
-
-        # Check if we need to end the previous rotation
-        if in_rotation and last_rotation_time is not None:
-            time_since_last_rotation = cast['time'] - last_rotation_time
-
-            if time_since_last_rotation >= ROTATION_TIMEOUT or cast['rotation_start']:
-                rotation_sections.append({
-                    "type": section_type,
-                    "start_time": section_start_time,
-                    "end_time": cast['time'],
-                    "lb": section_lb_count,
-                    "i": section_i_count,
-                    "rg": section_rg_count
-                })
-                in_rotation = False
-                casts_since_rotation_end = 0
-                section_start_time = cast['time']
-                section_type = f"Rotation #{len(rotation_sections) + 1}"
-                section_lb_count = 0
-                section_i_count = 0
-                section_rg_count = 0
-
-        # When not in a rotation, add separator every 5 casts
-        if not in_rotation and first_rotation_seen and not cast['rotation_start']:
-            if casts_since_rotation_end > 0 and casts_since_rotation_end % CASTS_BETWEEN_SEPARATORS == 0:
-                rotation_sections.append({
-                    "type": section_type,
-                    "start_time": section_start_time,
-                    "end_time": cast['time'],
-                    "lb": section_lb_count,
-                    "i": section_i_count,
-                    "rg": section_rg_count
-                })
-                section_start_time = cast['time']
-                section_type = f"Rotation #{len(rotation_sections) + 1}"
-                section_lb_count = 0
-                section_i_count = 0
-                section_rg_count = 0
 
         # Update section counts
         if abbr_str == "LB":
@@ -951,8 +1014,6 @@ def analyze_druid_performance(report_code, boss_name, player_name):
             last_rotation_time = cast['time']
             in_rotation = True
             casts_since_rotation_end = 0
-            if first_rotation_seen:
-                section_type = f"Rotation #{len(rotation_sections) + 1}"
         elif not in_rotation:
             casts_since_rotation_end += 1
 
@@ -1021,7 +1082,9 @@ def analyze_druid_performance(report_code, boss_name, player_name):
         "sorted_patterns": sorted_patterns,
         "tank_rotation_percent": round(tank_rotation_percent, 2),
         "rotating_on_tank": rotating_on_tank,
-        "fight_start_time": fight_start_time
+        "fight_start_time": fight_start_time,
+        "player_gcd": round(player_gcd, 3),
+        "rotation_timeout": round(rotation_timeout, 3)
     }
 
 
@@ -1157,6 +1220,10 @@ def display_results(data):
     print(f"{'Time':<10} {'Spell Name':<30} {'Target':<25} {'Active Tank':<20} {'Type':<12} {'Action':<20} {'Abbr':<6}")
     print("-" * 150)
 
+    # Use the same rotation rules as section building:
+    # 1) A rotation should only ever have at most one "Rotation started" row
+    # 2) "Rotation started" should always designate the start of a rotation
+    rotation_timeout = data.get('rotation_timeout', DEFAULT_ROTATION_TIMEOUT)
     last_rotation_time = None
     in_rotation = False
     first_rotation_seen = False
@@ -1173,7 +1240,7 @@ def display_results(data):
             action_str = "Rotation started"
         elif cast['instant_cast']:
             action_str = "Instant cast"
-        elif "Regrowth" in cast['spell']:
+        elif cast['regrowth']:
             action_str = "Regrowth"
         else:
             action_str = ""
@@ -1183,41 +1250,50 @@ def display_results(data):
             abbr_str = "LB"
         elif cast['instant_cast']:
             abbr_str = "I"
-        elif "Regrowth" in cast['spell']:
+        elif cast['regrowth']:
             abbr_str = "RG"
         else:
             abbr_str = ""
 
-        # Add separator before first rotation
-        if cast['rotation_start'] and not first_rotation_seen:
+        # Check if we need to end the current section and start a new one
+        should_end_section = False
+
+        # Rule: rotation_start ALWAYS starts a new section
+        if cast['rotation_start']:
+            if not first_rotation_seen:
+                # First rotation - print any pre-rotation summary
+                if section_lb_count > 0 or section_i_count > 0 or section_rg_count > 0:
+                    print(f"[{section_lb_count}LB {section_i_count}I {section_rg_count}RG]")
+                    print("-" * 150)
+                first_rotation_seen = True
+                section_lb_count = 0
+                section_i_count = 0
+                section_rg_count = 0
+            else:
+                # Subsequent rotation_start - always end current section if it has casts
+                if section_lb_count > 0 or section_i_count > 0 or section_rg_count > 0:
+                    should_end_section = True
+
+        # Rule: timeout ends the current rotation (only if not a rotation_start)
+        elif in_rotation and last_rotation_time is not None:
+            time_since_last_rotation = cast['time'] - last_rotation_time
+            if time_since_last_rotation >= rotation_timeout:
+                should_end_section = True
+                in_rotation = False
+                casts_since_rotation_end = 0
+
+        # Rule: add separator every 5 casts when not in rotation
+        elif not in_rotation and first_rotation_seen:
+            if casts_since_rotation_end > 0 and casts_since_rotation_end % CASTS_BETWEEN_SEPARATORS == 0:
+                should_end_section = True
+
+        # End the current section if needed
+        if should_end_section:
             print(f"[{section_lb_count}LB {section_i_count}I {section_rg_count}RG]")
             print("-" * 150)
-            first_rotation_seen = True
             section_lb_count = 0
             section_i_count = 0
             section_rg_count = 0
-
-        # Check if we need to end the previous rotation
-        if in_rotation and last_rotation_time is not None:
-            time_since_last_rotation = cast['time'] - last_rotation_time
-
-            if time_since_last_rotation >= ROTATION_TIMEOUT or cast['rotation_start']:
-                print(f"[{section_lb_count}LB {section_i_count}I {section_rg_count}RG]")
-                print("-" * 150)
-                in_rotation = False
-                casts_since_rotation_end = 0
-                section_lb_count = 0
-                section_i_count = 0
-                section_rg_count = 0
-
-        # When not in a rotation, add separator every 5 casts
-        if not in_rotation and first_rotation_seen and not cast['rotation_start']:
-            if casts_since_rotation_end > 0 and casts_since_rotation_end % CASTS_BETWEEN_SEPARATORS == 0:
-                print(f"[{section_lb_count}LB {section_i_count}I {section_rg_count}RG]")
-                print("-" * 150)
-                section_lb_count = 0
-                section_i_count = 0
-                section_rg_count = 0
 
         # Print the cast
         print(f"{time_str:<10} {cast['spell']:<30} {cast['target']:<25} {cast['active_tank']:<20} {cast['type']:<12} {action_str:<20} {abbr_str:<6}")

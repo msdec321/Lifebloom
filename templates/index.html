@@ -1417,8 +1417,8 @@
                     <h2>Motivation</h2>
                     <p>The Burning Crusade is almost 20 years old! 🎉 </p>
                         
-                    <p>Despite so much time passing, I don't believe our collective understanding of Resto Druid has progressed significantly since 2007 - and not because the spec has been solved. With TBC Classic, I had hoped that the community would build upon existing knowledge from 2007 and the private server era, but instead what I observed was largely "re-discovery" and recycled guides, and very little theorycrafting or knowledge sharing. I think we can do better.</p>
-                    <p>To illustrate, consider the following fundamental questions that I believe remain unanswered:</p>
+                    <p>Despite so much time passing, I don't believe our collective understanding of Resto Druid has progressed significantly since 2007 - and not because the spec has been solved. With TBC Classic, I had hoped that the community would build upon existing knowledge from 2007 and the private server era, but instead what I observed was largely "re-discovery" and recycled guides, and very little theorycrafting or knowledge sharing.</p>
+                    <p>To illustrate this, consider the following fundamental questions that I believe remain unanswered:</p>
                     <ul>
                         <li>For a given encounter, is there an optimal spell haste breakpoint?</li>
                         <li>For a given encounter, is there an optimal healing rotation?</li>
@@ -1426,7 +1426,7 @@
                     <p>These questions appear straightforward, yet after 20 years neither has a definitive answer. Here's my hot take: traditional theorycrafting alone will never solve them.</p>
                     <p>The reason is multifaceted.</p>
                     <p>First, healer theorycrafting is inherently difficult. Raid encounters are complex environments with numerous confounding variables: healer count and composition, fight duration, access to Shadow Priest, etc. The optimal rotation for a 3-minute encounter may differ significantly from a 6-minute encounter due to mana constraints alone.</p>
-                    <p>Second, the community is still split on whether HPS is a valid performance metric because of the confounding effects mentioned above. This has left us in a bit of a theorycrafting “quagmire” - without an objective measure of performance, players instead rely on intuition and hand-wavy arguments about what is good or not. There’s an uncomfortable dogma surrounding the topic of HPS, and just mentioning the word gets you harassed and dogpiled on. I think the community is wrong.</p>
+                    <p>Second, the community is still split on whether HPS is a valid performance metric because of the confounding effects mentioned above. This has left us in a bit of a theorycrafting “quagmire” - without an objective measure of performance, players instead rely on intuition and subjective arguments about what is good or not. Intuition and experience can get you very far, but different players have different intuitions about what is "best". On top of this, there’s an uncomfortable dogma surrounding the topic of HPS, and just mentioning the word gets you harassed and dogpiled on. I think the community is wrong about HPS.</p>
                     <p>By analyzing large datasets while controlling for confounding variables we can isolate factors that you do have control over - rotation, playstyle, gearing choices, haste breakpoints, etc. across different encounters and conditions. I don't believe these fundamental questions are unanswerable, but we need a new approach. That is the motivation for this tool: combining traditional theorycrafting with data-driven analyses to address fundamental questions and to advance our understanding of the spec.</p>
                 </div>
 
@@ -2196,12 +2196,43 @@
             // Report link
             document.getElementById('reportLink').href = data.report_link;
 
-            // Cast Sequence
+            // Cast Sequence with proper rotation grouping using rotation_sections
             const castData = data.cast_data || [];
+            const rotationSections = data.rotation_sections || [];
             document.getElementById('castCount').textContent = `(${castData.length} casts)`;
 
-            let rotationNumber = 0;
+            // Check if a section is "interesting" (same logic as actual_rotations filter in Python)
+            function isInterestingSection(section) {
+                // Filter out: [1LB 0I 0RG] (just rotation start) and [0LB 1I 0RG] (just instant cast)
+                const isJustRotationStart = (section.lb === 1 && section.i === 0 && section.rg === 0);
+                const isJustInstantCast = (section.lb === 0 && section.i === 1 && section.rg === 0);
+                return !isJustRotationStart && !isJustInstantCast;
+            }
+
+            // Function to find which section a cast belongs to based on time
+            function findSectionIndex(time) {
+                for (let i = 0; i < rotationSections.length; i++) {
+                    const section = rotationSections[i];
+                    // For last section, include end_time; otherwise exclude it
+                    const isLastSection = (i === rotationSections.length - 1);
+                    if (time >= section.start_time && (isLastSection ? time <= section.end_time : time < section.end_time)) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+
+            let lastSectionIndex = -1;
+            let displayedRotationNumber = 0;
             const castSequenceHtml = castData.map((cast, index) => {
+                // Find which section this cast belongs to
+                const sectionIndex = findSectionIndex(cast.time);
+
+                // Skip casts from uninteresting sections entirely
+                if (sectionIndex >= 0 && !isInterestingSection(rotationSections[sectionIndex])) {
+                    return '';  // Don't render this cast
+                }
+
                 // Determine action string
                 let actionStr = '';
                 if (cast.rotation_start) {
@@ -2217,19 +2248,21 @@
                 // Highlight lifebloom on tank
                 const spellStyle = cast.rotation_start ? 'color: #10b981; font-weight: 600;' : '';
 
-                // Add separator row before rotation starts (except the very first cast)
                 let separatorRow = '';
-                if (cast.rotation_start && index > 0) {
-                    rotationNumber++;
+
+                // Add separator when entering a new section
+                if (sectionIndex !== lastSectionIndex && sectionIndex >= 0) {
+                    displayedRotationNumber++;
+                    const section = rotationSections[sectionIndex];
+                    const notation = `[${section.lb}LB ${section.i}I ${section.rg}RG]`;
                     separatorRow = `
                         <tr style="background: #0f3460; border-top: 2px solid #667eea;">
                             <td colspan="5" style="padding: 8px; color: #667eea; font-weight: 600; text-align: center;">
-                                Rotation #${rotationNumber}
+                                Rotation #${displayedRotationNumber} &nbsp;—&nbsp; ${notation}
                             </td>
                         </tr>
                     `;
-                } else if (cast.rotation_start && index === 0) {
-                    rotationNumber++;
+                    lastSectionIndex = sectionIndex;
                 }
 
                 return `
