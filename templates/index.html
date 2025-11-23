@@ -165,47 +165,52 @@
 
         .table-controls input {
             padding: 8px 12px;
-            border: 2px solid #667eea;
+            border: 1px solid #3a3d3a;
             border-radius: 5px;
             font-size: 1em;
             width: 80px;
-            background: #0f3460;
-            color: #fff;
+            background: #2a2d2a;
+            color: #bebeb1;
         }
 
         .table-controls input:focus {
             outline: none;
-            border-color: #8b9dc3;
+            border-color: #4a4d4a;
+            background: #3a3d3a;
         }
 
         .table-controls button {
             padding: 8px 16px;
-            background: #667eea;
-            color: white;
-            border: none;
+            background: #2a2d2a;
+            color: #bebeb1;
+            border: 1px solid #3a3d3a;
             border-radius: 5px;
             cursor: pointer;
             font-weight: 600;
-            transition: background 0.2s;
+            transition: all 0.2s;
         }
 
         .table-controls button:hover {
-            background: #5568d3;
+            background: #3a3d3a;
+            color: #fff;
+            border-color: #4a4d4a;
         }
 
         .collapse-btn {
-            background: #0f3460;
-            border: 2px solid #667eea;
+            background: #2a2d2a;
+            border: 1px solid #3a3d3a;
             border-radius: 5px;
             padding: 8px 16px;
-            color: #fff;
+            color: #bebeb1;
             cursor: pointer;
             font-weight: 600;
             transition: all 0.2s;
         }
 
         .collapse-btn:hover {
-            background: #667eea;
+            background: #3a3d3a;
+            color: #fff;
+            border-color: #4a4d4a;
         }
 
         .table-content {
@@ -256,8 +261,8 @@
         }
 
         thead {
-            background: #0f3460;
-            color: white;
+            background: #2a2d2a;
+            color: #bebeb1;
         }
 
         th, td {
@@ -306,7 +311,7 @@
         .controls {
             background: #1d1f1c;
             border-radius: 10px;
-            padding: 20px;
+            padding: 25px;
             margin-bottom: 20px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             border: 1px solid #2a3f5f;
@@ -316,60 +321,93 @@
             font-size: 1.2em;
             font-weight: 600;
             color: #bebeb1;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
 
-        .controls-row {
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+        }
+
+        .filter-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .filter-section-title {
+            color: #8b9dc3;
+            font-weight: 600;
+            font-size: 0.95em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #2a3f5f;
+            margin-bottom: 5px;
+        }
+
+        .filter-item {
             display: flex;
             align-items: center;
-            gap: 20px;
+            gap: 10px;
         }
 
-        .controls label {
-            margin-right: 10px;
+        .filter-item label {
             font-weight: 600;
             color: #eee;
+            min-width: 120px;
+            font-size: 0.9em;
         }
 
-        .controls select,
-        .controls input {
+        .filter-item select,
+        .filter-item input {
+            flex: 1;
             padding: 8px 12px;
             border: none;
             border-radius: 5px;
-            font-size: 1em;
+            font-size: 0.9em;
             background: #2d2d2d;
             color: #fff;
+            min-width: 0;
         }
 
-        .controls select {
-            width: 150px;
+        .filter-item select {
             cursor: pointer;
         }
 
-        .controls input {
-            width: 100px;
-        }
-
-        .controls select:focus,
-        .controls input:focus {
+        .filter-item select:focus,
+        .filter-item input:focus {
             outline: none;
-            border-color: #39c07f;
+            box-shadow: 0 0 0 2px #667eea40;
+            border-color: #667eea;
         }
 
-        .controls button {
-            padding: 8px 20px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 5px;
+        .healer-comp-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .region-checkboxes {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 8px;
+            max-width: 150px;
+        }
+
+        .region-checkboxes label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
             cursor: pointer;
-            font-weight: 600;
-            margin-left: 10px;
-            transition: background 0.2s;
+            color: #eee;
+            font-size: 0.9em;
+            white-space: nowrap;
         }
 
-        .controls button:hover {
-            background: #5568d3;
+        .region-checkboxes input[type="checkbox"] {
+            cursor: pointer;
         }
 
         .icon-buttons {
@@ -658,7 +696,7 @@
                     <h3>Notice</h3>
                     <p>Welcome to <span style="color: #39c07f; font-weight: 600;">Lifebloom</span>! This is an application that collects and structures TBC Resto Druid data from WarcraftLogs in order to help facilitate retrospective data analyses by and for the community. This app is still in development in preparation for the next iteration of TBC Classic.</p>
                     <p>For more information about the tool and how to contact the author, please check out the "About" tab. Thanks!</p>
-                    <p class="signature">-Mercy</p>
+                    <p class="signature">- Mercy</p>
                 </div>
 
                 <hr class="section-divider">
@@ -686,105 +724,130 @@
 
         <div class="controls">
             <div class="controls-title">Filters</div>
-            <div class="controls-row">
-                <label for="dataset">Boss:</label>
-                <select id="dataset" onchange="loadData()">
-                    <option value="brutallus">Brutallus</option>
-                    <option value="felmyst">Felmyst</option>
-                </select>
-
-                <label for="totalHealers">Total Healers:</label>
-                <select id="totalHealers" onchange="loadTopN()">
-                    <option value="">Any</option>
-                    <option value="5">5</option>
-                    <option value="6">6</option>
-                    <option value="7">7</option>
-                    <option value="8">8</option>
-                </select>
-
-                <label for="shadowPriest">Shadow Priest:</label>
-                <select id="shadowPriest" onchange="loadTopN()">
-                    <option value="">Any</option>
-                    <option value="Yes">Yes</option>
-                    <option value="No">No</option>
-                </select>
-
-                <label for="innervates">Innervates:</label>
-                <select id="innervates" onchange="loadTopN()">
-                    <option value="">Any</option>
-                    <option value="0">0</option>
-                    <option value="1" selected>1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                </select>
-
-                <label for="rotatingOnTank">Rotating on Tank:</label>
-                <select id="rotatingOnTank" onchange="loadTopN()">
-                    <option value="">Any</option>
-                    <option value="Yes">Yes</option>
-                    <option value="No">No</option>
-                </select>
-
-                <span style="color: #8b9dc3; font-weight: 600; margin-left: 20px;">Region:</span>
-                <div class="region-grid">
-                    <label><input type="checkbox" id="regionUS" value="US" checked onchange="loadTopN()">US</label>
-                    <label><input type="checkbox" id="regionEU" value="EU" checked onchange="loadTopN()">EU</label>
-                    <label><input type="checkbox" id="regionCN" value="CN" checked onchange="loadTopN()">CN</label>
-                    <label><input type="checkbox" id="regionKR" value="KR" checked onchange="loadTopN()">KR</label>
+            <div class="filter-grid">
+                <!-- Fight Settings Section -->
+                <div class="filter-section">
+                    <div class="filter-section-title">Fight Settings</div>
+                    <div class="filter-item">
+                        <label for="dataset">Boss:</label>
+                        <select id="dataset" onchange="loadData()">
+                            <option value="brutallus">Brutallus</option>
+                            <option value="felmyst">Felmyst</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="totalHealers">Total Healers:</label>
+                        <select id="totalHealers" onchange="loadTopN()">
+                            <option value="">Any</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="rotatingOnTank">Rotating on Tank:</label>
+                        <select id="rotatingOnTank" onchange="loadTopN()">
+                            <option value="">Any</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
                 </div>
-            </div>
-            <div class="controls-row" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #2a3f5f;">
-                <span style="color: #8b9dc3; font-weight: 600; margin-right: 15px;">Healer Comp:</span>
 
-                <label for="nDruid">Druids:</label>
-                <select id="nDruid" onchange="loadTopN()">
-                    <option value="">Any</option>
-                    <option value="0">0</option>
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                </select>
+                <!-- Buffs & Support Section -->
+                <div class="filter-section">
+                    <div class="filter-section-title">Buffs & Support</div>
+                    <div class="filter-item">
+                        <label for="shadowPriest">Shadow Priest:</label>
+                        <select id="shadowPriest" onchange="loadTopN()">
+                            <option value="">Any</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="innervates">Innervates:</label>
+                        <select id="innervates" onchange="loadTopN()">
+                            <option value="" selected>Any</option>
+                            <option value="0">0</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                        </select>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <div style="color: #eee; font-weight: 600; font-size: 0.9em; margin-bottom: 8px;">Region:</div>
+                        <div class="region-checkboxes" style="margin-left: 10px;">
+                            <label><input type="checkbox" id="regionUS" value="US" checked onchange="loadTopN()"> US</label>
+                            <label><input type="checkbox" id="regionEU" value="EU" checked onchange="loadTopN()"> EU</label>
+                            <label><input type="checkbox" id="regionCN" value="CN" checked onchange="loadTopN()"> CN</label>
+                            <label><input type="checkbox" id="regionKR" value="KR" checked onchange="loadTopN()"> KR</label>
+                        </div>
+                    </div>
+                </div>
 
-                <label for="nPaladin">Paladins:</label>
-                <select id="nPaladin" onchange="loadTopN()">
-                    <option value="">Any</option>
-                    <option value="0">0</option>
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                </select>
-
-                <label for="nHPriest">Holy Priests:</label>
-                <select id="nHPriest" onchange="loadTopN()">
-                    <option value="">Any</option>
-                    <option value="0">0</option>
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                </select>
-
-                <label for="nDPriest">Disc Priests:</label>
-                <select id="nDPriest" onchange="loadTopN()">
-                    <option value="">Any</option>
-                    <option value="0">0</option>
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                </select>
-
-                <label for="nShaman">Shamans:</label>
-                <select id="nShaman" onchange="loadTopN()">
-                    <option value="">Any</option>
-                    <option value="0">0</option>
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                </select>
+                <!-- Healer Composition Section -->
+                <div class="filter-section">
+                    <div class="filter-section-title">Healer Composition</div>
+                    <div class="healer-comp-grid">
+                        <div class="filter-item">
+                            <label for="nDruid">Druids:</label>
+                            <select id="nDruid" onchange="loadTopN()">
+                                <option value="">Any</option>
+                                <option value="0">0</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="nPaladin">Paladins:</label>
+                            <select id="nPaladin" onchange="loadTopN()">
+                                <option value="">Any</option>
+                                <option value="0">0</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="nHPriest">Holy Priests:</label>
+                            <select id="nHPriest" onchange="loadTopN()">
+                                <option value="">Any</option>
+                                <option value="0">0</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="nDPriest">Disc Priests:</label>
+                            <select id="nDPriest" onchange="loadTopN()">
+                                <option value="">Any</option>
+                                <option value="0">0</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                            </select>
+                        </div>
+                        <div class="filter-item">
+                            <label for="nShaman">Shamans:</label>
+                            <select id="nShaman" onchange="loadTopN()">
+                                <option value="">Any</option>
+                                <option value="0">0</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1651,7 +1714,7 @@
                         <td>${row.VampiricTouch || 'N/A'}</td>
                         <td>${row.RotatingOnTank || 'N/A'}</td>
                         <td>${row.Rotation1 || 'N/A'}</td>
-                        <td>${row.ReportLink ? `<a href="${row.ReportLink}" target="_blank" style="display: inline-block; padding: 6px 12px; background: #667eea; color: white; text-decoration: none; border-radius: 4px; font-size: 0.85em; font-weight: 600; transition: background 0.2s;" onmouseover="this.style.background='#5568d3'" onmouseout="this.style.background='#667eea'">View</a>` : 'N/A'}</td>
+                        <td>${row.ReportLink ? `<a href="${row.ReportLink}" target="_blank" style="display: inline-block; padding: 6px 12px; background: #2a2d2a; color: #bebeb1; text-decoration: none; border-radius: 4px; font-size: 0.85em; font-weight: 600; border: 1px solid #3a3d3a; transition: all 0.2s;" onmouseover="this.style.background='#3a3d3a'; this.style.color='#fff'" onmouseout="this.style.background='#2a2d2a'; this.style.color='#bebeb1'">View</a>` : 'N/A'}</td>
                     </tr>
                 `).join('');
 
