@@ -148,7 +148,7 @@
 
         .filtered-count {
             font-size: 0.9em;
-            color: #667eea;
+            color: #DE772A;
             font-weight: 500;
         }
 
@@ -676,6 +676,88 @@
             color: #C41E3A;
             font-weight: 600;
         }
+
+        /* Data Dictionary styles */
+        .data-dictionary {
+            background: #1d1f1c;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border: 1px solid #2a3f5f;
+        }
+
+        .data-dictionary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .data-dictionary-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #bebeb1;
+        }
+
+        .data-dictionary-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, opacity 0.3s ease-out, margin-top 0.3s ease-out;
+            opacity: 0;
+            margin-top: 0;
+        }
+
+        .data-dictionary-content.expanded {
+            max-height: 2000px;
+            opacity: 1;
+            margin-top: 20px;
+        }
+
+        .dict-category {
+            margin-bottom: 25px;
+        }
+
+        .dict-category:last-child {
+            margin-bottom: 0;
+        }
+
+        .dict-category-title {
+            color: #8b9dc3;
+            font-weight: 600;
+            font-size: 0.95em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #2a3f5f;
+            margin-bottom: 15px;
+        }
+
+        .dict-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .dict-item {
+            background: #262626;
+            border-radius: 6px;
+            padding: 12px 15px;
+            border-left: 3px solid #667eea;
+        }
+
+        .dict-term {
+            color: #DE772A;
+            font-weight: 600;
+            font-size: 0.95em;
+            margin-bottom: 5px;
+        }
+
+        .dict-definition {
+            color: #c5d0e6;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
@@ -724,6 +806,7 @@
 
         <div class="controls">
             <div class="controls-title">Filters</div>
+            <p style="color: #8b9dc3; font-size: 0.9em; margin-bottom: 15px;">For descriptions of each variable in the dataset and a definition of Rotation, please see the Data Dictionary section below.</p>
             <div class="filter-grid">
                 <!-- Fight Settings Section -->
                 <div class="filter-section">
@@ -864,6 +947,154 @@
                     <div class="chart-title">HPS vs Haste</div>
                 </div>
                 <canvas id="hasteChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Data Dictionary Section -->
+        <div class="data-dictionary">
+            <div class="data-dictionary-header" onclick="toggleDataDictionary()">
+                <div class="data-dictionary-title">Data Dictionary</div>
+                <button class="collapse-btn" id="dataDictBtn">Expand</button>
+            </div>
+            <div class="data-dictionary-content" id="dataDictContent">
+                <!-- Player Information -->
+                <div class="dict-category">
+                    <div class="dict-category-title">Player Information</div>
+                    <div class="dict-grid">
+                        <div class="dict-item">
+                            <div class="dict-term">Name</div>
+                            <div class="dict-definition">The character name of the Restoration Druid as it appears on WarcraftLogs.</div>
+                        </div>
+                        <div class="dict-item">
+                            <div class="dict-term">Server</div>
+                            <div class="dict-definition">The realm/server where the character is located.</div>
+                        </div>
+                        <div class="dict-item">
+                            <div class="dict-term">Region</div>
+                            <div class="dict-definition">Geographic region of the server: US (Americas), EU (Europe), CN (China), or KR (Korea).</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Metrics -->
+                <div class="dict-category">
+                    <div class="dict-category-title">Performance Metrics</div>
+                    <div class="dict-grid">
+                        <div class="dict-item">
+                            <div class="dict-term">HPS</div>
+                            <div class="dict-definition">Healing Per Second. Total effective healing done divided by fight duration. This is the primary performance metric used for ranking.</div>
+                        </div>
+                        <div class="dict-item">
+                            <div class="dict-term">Duration</div>
+                            <div class="dict-definition">Total length of the boss encounter from pull to kill, displayed in minutes and seconds (e.g., "4m 24s").</div>
+                        </div>
+                        <div class="dict-item">
+                            <div class="dict-term">Adjusted Rank</div>
+                            <div class="dict-definition">The player's position within the current filtered dataset. Changes dynamically based on active filters.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Character Stats -->
+                <div class="dict-category">
+                    <div class="dict-category-title">Character Stats</div>
+                    <div class="dict-grid">
+                        <div class="dict-item">
+                            <div class="dict-term">Haste</div>
+                            <div class="dict-definition">Spell Haste rating at the start of the encounter. Is sometimes unavailable in a report, represented by "-".</div>
+                        </div>
+                        <div class="dict-item">
+                            <div class="dict-term">Spirit</div>
+                            <div class="dict-definition">Spirit stat at the start of the encounter. Is sometimes unavailable in a report, represented by "-".</div>
+                        </div>
+                        <div class="dict-item">
+                            <div class="dict-term">Intellect</div>
+                            <div class="dict-definition">Intellect stat at the start of the encounter. Is sometimes unavailable in a report, represented by "-".</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Raid Composition -->
+                <div class="dict-category">
+                    <div class="dict-category-title">Raid Composition</div>
+                    <div class="dict-grid">
+                        <div class="dict-item">
+                            <div class="dict-term">Total Healers</div>
+                            <div class="dict-definition">Number of healers in the raid.</div>
+                        </div>
+                        <div class="dict-item">
+                            <div class="dict-term">nDruid / nPaladin / etc.</div>
+                            <div class="dict-definition">Count of each healer class in the raid.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Buffs & External Support -->
+                <div class="dict-category">
+                    <div class="dict-category-title">Buffs & External Support</div>
+                    <div class="dict-grid">
+                        <div class="dict-item">
+                            <div class="dict-term">Shadow Priest (Vampiric Touch)</div>
+                            <div class="dict-definition">Whether the Druid had a Shadow Priest providing Vampiric Touch mana regeneration at any point during the encounter.</div>
+                        </div>
+                        <div class="dict-item">
+                            <div class="dict-term">Innervates</div>
+                            <div class="dict-definition">Number of Innervates received during the encounter.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Playstyle & Rotation -->
+                <div class="dict-category">
+                    <div class="dict-category-title">Playstyle & Rotation</div>
+                    <div class="dict-item" style="margin-bottom: 15px;">
+                        <div class="dict-term">Rotation</div>
+                        <div class="dict-definition">
+                            <p style="margin-bottom: 10px;">A "rotation" is the sequence of spells that the Druid casts, either while maintaining Lifebloom on the tank(s) or not. For an introductory overview on rotations, I'd refer you to SixPacKyx's <a href="https://www.wowhead.com/tbc/guide/classes/druid/healer-rotation-cooldowns-abilities-pve" target="_blank" style="color: #667eea;">WowHead guide</a> under the "Rolling Lifebloom: Advanced Restoration Druid Healing Rotation" section.</p>
+                            <p style="margin-bottom: 10px;">To help discuss rotations more easily, I've created a standard notation for rotations: <strong style="color: #DE772A;">xLB yI zRG</strong></p>
+                            <ul style="margin-left: 20px; margin-top: 5px;">
+                                <li><strong>x:</strong> The number of tanks you are rolling Lifebloom on during a rotation.</li>
+                                <li><strong>y:</strong> The number of instant cast spells used during a rotation (Rejuv, Swiftmend, ToL, etc.)</li>
+                                <li><strong>z:</strong> The number of Regrowth casts used during the rotation.</li>
+                            </ul>
+                            <p style="margin-top: 15px; margin-bottom: 10px;">To illustrate, here are a few examples:</p>
+                            <ul style="margin-left: 20px;">
+                                <li><strong style="color: #DE772A;">1LB 1I 1RG</strong> - A typical unhasted 1 tank rotation. The Druid refreshes Lifebloom on the tank, uses an instant cast spell (perhaps refreshing Rejuv on the tank), and casts 1 Regrowth.</li>
+                                <li><strong style="color: #DE772A;">2LB 2I 0RG</strong> - A typical unhasted 2 tank rotation. The Druid refreshes Lifebloom on two tanks and uses two instant cast spells, but does not cast any Regrowths.</li>
+                                <li><strong style="color: #DE772A;">0LB 0I 5RG</strong> - The Druid does not cast Lifebloom on any tank, but instead casts Regrowth five times in a row.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="dict-grid">
+                        <div class="dict-item">
+                            <div class="dict-term">Rotating on Tank</div>
+                            <div class="dict-definition">We programatically list all of the rotations the Druid did over the course of the encounter, and check if at least 70% (chosen arbitrarily) of the Druid's rotations on a fight include a Lifebloom on at least one of the tanks (see Report Analyzer tool for more details). If so, then Rotating on Tank is "Yes", otherwise "No".</div>
+                        </div>
+                        <div class="dict-item">
+                            <div class="dict-term">Primary Rotation</div>
+                            <div class="dict-definition">The most frequently used rotation pattern during the encounter.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Talents -->
+                <div class="dict-category">
+                    <div class="dict-category-title">Talents & Spec</div>
+                    <div class="dict-grid">
+                        <div class="dict-item">
+                            <div class="dict-term">Deep Resto / Tree of Life</div>
+                            <div class="dict-definition">Full Restoration spec with Tree of Life form. Provides better mana efficiency and rotational flexibility compared to Dreamstate and Nautre's Grace.</div>
+                        </div>
+                        <div class="dict-item">
+                            <div class="dict-term">Dreamstate</div>
+                            <div class="dict-definition">Hybrid spec investing in Balance for "Improved Faerie Fire", though called Dreamstate for historical reasons. In this spec, Druids sacrifice Tree of Life and Swiftmend.</div>
+                        </div>
+                        <div class="dict-item">
+                            <div class="dict-term">Nature's Grace</div>
+                            <div class="dict-definition">Balance talent that reduces next cast time by 0.5s after a spell crit, supporting a Regrowth-heavy playstyle with considerably high HPS but with significant mana constraints. In WarcraftLogs, Deep Resto and Nature's Grace are both categorized as Restoration. To identify Nature's Grace builds, we check if the Druid had the Nature's Grace buff at any point during the encounter.</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1621,6 +1852,20 @@
                     tableContent.classList.add('collapsed');
                 }, 10);
                 collapseBtn.textContent = 'Expand';
+            }
+        }
+
+        // Toggle Data Dictionary collapse/expand
+        function toggleDataDictionary() {
+            const content = document.getElementById('dataDictContent');
+            const btn = document.getElementById('dataDictBtn');
+
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                btn.textContent = 'Expand';
+            } else {
+                content.classList.add('expanded');
+                btn.textContent = 'Collapse';
             }
         }
 
