@@ -18,7 +18,7 @@ def load_data(dataset='brutallus'):
     if data_path and os.path.exists(data_path):
         df = pd.read_csv(data_path)
         # Convert numeric columns to appropriate types
-        numeric_cols = ['HPS', 'Haste', 'Spirit', 'Intellect']
+        numeric_cols = ['HPS', 'HasteGear', 'HasteSummary', 'Spirit', 'Intellect']
         for col in numeric_cols:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
@@ -53,7 +53,7 @@ def get_stats():
         'avg_hps': df['HPS'].mean() if 'HPS' in df.columns else 0,
         'max_hps': df['HPS'].max() if 'HPS' in df.columns else 0,
         'min_hps': df['HPS'].min() if 'HPS' in df.columns else 0,
-        'avg_haste': df['Haste'].mean() if 'Haste' in df.columns else 0,
+        'avg_haste': df['HasteGear'].mean() if 'HasteGear' in df.columns else 0,
         'avg_spirit': df['Spirit'].mean() if 'Spirit' in df.columns else 0,
         'avg_intellect': df['Intellect'].mean() if 'Intellect' in df.columns else 0,
     }

@@ -17,6 +17,7 @@ import requests
 from datetime import datetime
 from collections import Counter
 from auth import get_user_access_token
+from tbc_haste_items import calculate_gear_haste
 
 # API Configuration
 API_URL = "https://www.warcraftlogs.com/api/v2/user"
@@ -373,19 +374,27 @@ def analyze_druid_performance(report_code, boss_name, player_name):
 
                     intellect = stats.get("Intellect", {}).get("max", 0) if stats.get("Intellect") else 0
                     spirit = stats.get("Spirit", {}).get("max", 0) if stats.get("Spirit") else 0
-                    haste = stats.get("Haste", {}).get("max", 0) if stats.get("Haste") else 0
+                    haste_summary = stats.get("Haste", {}).get("max", 0) if stats.get("Haste") else 0
                     item_level = stats.get("Item Level", {}).get("max", 0) if stats.get("Item Level") else 0
+
+                    # Extract gear for trinkets and haste calculation
+                    gear = combatant_info.get("gear", [])
+
+                    # Calculate haste from gear using lookup table
+                    gear_haste_result = calculate_gear_haste(gear)
+                    haste_gear = gear_haste_result["total_haste"]
 
                     player_stats = {
                         "intellect": intellect,
                         "spirit": spirit,
-                        "haste": haste,
+                        "haste_summary": haste_summary,
+                        "haste_gear": haste_gear,
+                        "haste": haste_gear,  # Use gear-based haste for calculations
                         "item_level": item_level,
-                        "has_stats": bool(intellect or spirit or haste or item_level)
+                        "has_stats": bool(intellect or spirit or haste_summary or haste_gear or item_level)
                     }
 
                     # Extract trinkets
-                    gear = combatant_info.get("gear", [])
                     trinkets = []
 
                     for item in gear:
@@ -403,14 +412,6 @@ def analyze_druid_performance(report_code, boss_name, player_name):
                         "trinkets": trinkets,
                         "has_trinkets": len(trinkets) > 0
                     }
-
-                    # Correct for Scarab of the Infinite Cycle (ID: 28190)
-                    # WarcraftLogs incorrectly adds 320 Haste when this trinket is equipped
-                    SCARAB_OF_INFINITE_CYCLE_ID = 28190
-                    SCARAB_HASTE_CORRECTION = 320
-                    has_scarab = any(t.get("id") == SCARAB_OF_INFINITE_CYCLE_ID for t in trinkets)
-                    if has_scarab and player_stats.get("haste", 0) >= SCARAB_HASTE_CORRECTION:
-                        player_stats["haste"] = player_stats["haste"] - SCARAB_HASTE_CORRECTION
 
                 break
 
@@ -1140,7 +1141,8 @@ def display_results(data):
     # Display stats
     if stats.get("has_stats"):
         print(f"    Item Level: {stats.get('item_level', 0)}")
-        print(f"    Stats: {stats.get('intellect', 0)} Intellect | {stats.get('spirit', 0)} Spirit | {stats.get('haste', 0)} Haste")
+        print(f"    Stats: {stats.get('intellect', 0)} Intellect | {stats.get('spirit', 0)} Spirit")
+        print(f"    Haste (from gear): {stats.get('haste_gear', 0)} | Haste (WCL summary): {stats.get('haste_summary', 0)}")
     else:
         print(f"    Item Level: Unknown")
         print(f"    Stats: Unknown")

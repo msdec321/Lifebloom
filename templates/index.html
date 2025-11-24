@@ -225,7 +225,7 @@
 
         .charts-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            grid-template-columns: 1fr;
             gap: 20px;
             margin-bottom: 20px;
         }
@@ -255,6 +255,35 @@
             max-height: 400px;
         }
 
+        .chart-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+        }
+
+        .chart-content.collapsed {
+            max-height: 0 !important;
+            opacity: 0;
+        }
+
+        .chart-collapse-btn {
+            background: #2a3f5f;
+            color: #8b9dc3;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+
+        .chart-collapse-btn:hover {
+            background: #3a4f6f;
+            color: #fff;
+        }
+
+        #rotationChartContent {
+            height: 400px;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -267,7 +296,7 @@
 
         th, td {
             padding: 12px;
-            text-align: left;
+            text-align: center;
             border-bottom: 1px solid #2a3f5f;
             color: #eee;
         }
@@ -937,16 +966,32 @@
         <div class="charts-grid">
             <div class="chart-container">
                 <div class="chart-header">
-                    <div class="chart-title">HPS vs Duration</div>
+                    <div class="chart-title">HPS vs Haste</div>
+                    <button class="chart-collapse-btn" onclick="toggleChart('hasteChart', this)">Collapse</button>
                 </div>
-                <canvas id="hpsChart"></canvas>
+                <div class="chart-content" id="hasteChartContent">
+                    <canvas id="hasteChart"></canvas>
+                </div>
             </div>
 
             <div class="chart-container">
                 <div class="chart-header">
-                    <div class="chart-title">HPS vs Haste</div>
+                    <div class="chart-title">Average HPS by Primary Rotation</div>
+                    <button class="chart-collapse-btn" onclick="toggleChart('rotationChart', this)">Collapse</button>
                 </div>
-                <canvas id="hasteChart"></canvas>
+                <div class="chart-content" id="rotationChartContent">
+                    <canvas id="rotationChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title">HPS vs Duration</div>
+                    <button class="chart-collapse-btn" onclick="toggleChart('hpsChart', this)">Expand</button>
+                </div>
+                <div class="chart-content collapsed" id="hpsChartContent">
+                    <canvas id="hpsChart"></canvas>
+                </div>
             </div>
         </div>
 
@@ -1050,11 +1095,11 @@
                     <div class="dict-item" style="margin-bottom: 15px;">
                         <div class="dict-term">Rotation</div>
                         <div class="dict-definition">
-                            <p style="margin-bottom: 10px;">A "rotation" is the sequence of spells that the Druid casts, either while maintaining Lifebloom on the tank(s) or not. For an introductory overview on rotations, I'd refer you to SixPacKyx's <a href="https://www.wowhead.com/tbc/guide/classes/druid/healer-rotation-cooldowns-abilities-pve" target="_blank" style="color: #667eea;">WowHead guide</a> under the "Rolling Lifebloom: Advanced Restoration Druid Healing Rotation" section.</p>
+                            <p style="margin-bottom: 10px;">A "rotation" is the sequence of spells that the Druid casts, either while maintaining Lifebloom on the tank(s) or not. For an introductory overview on rotations, I'd refer you to SixPacKyx's <a href="https://www.wowhead.com/tbc/guide/classes/druid/healer-rotation-cooldowns-abilities-pve" target="_blank" style="color: #667eea;">WowHead guide</a> under the "Rolling Lifebloom: Advanced Restoration Druid Healing Rotation" section, and additionally giansm's <a href="https://web.archive.org/web/20080913120521/http://elitistjerks.com/f31/t17783-druid_raiding_tree/#Healing_Strategies" target="_blank" style="color: #667eea;">Elitist Jerks guide</a> under the "Healing Strategies" section.</p>
                             <p style="margin-bottom: 10px;">To help discuss rotations more easily, I've created a standard notation for rotations: <strong style="color: #DE772A;">xLB yI zRG</strong></p>
                             <ul style="margin-left: 20px; margin-top: 5px;">
                                 <li><strong>x:</strong> The number of tanks you are rolling Lifebloom on during a rotation.</li>
-                                <li><strong>y:</strong> The number of instant cast spells used during a rotation (Rejuv, Swiftmend, ToL, etc.)</li>
+                                <li><strong>y:</strong> The number of instant cast spells used during a rotation (Rejuv, Swiftmend, Lifebloom on non-tanks, etc.)</li>
                                 <li><strong>z:</strong> The number of Regrowth casts used during the rotation.</li>
                             </ul>
                             <p style="margin-top: 15px; margin-bottom: 10px;">To illustrate, here are a few examples:</p>
@@ -1426,7 +1471,7 @@
                     <p>These questions appear straightforward, yet after 20 years neither has a definitive answer. Here's my hot take: traditional theorycrafting alone will never solve them.</p>
                     <p>The reason is multifaceted.</p>
                     <p>First, healer theorycrafting is inherently difficult. Raid encounters are complex environments with numerous confounding variables: healer count and composition, fight duration, access to Shadow Priest, etc. The optimal rotation for a 3-minute encounter may differ significantly from a 6-minute encounter due to mana constraints alone.</p>
-                    <p>Second, the community is still split on whether HPS is a valid performance metric because of the confounding effects mentioned above. This has left us in a bit of a theorycrafting “quagmire” - without an objective measure of performance, players instead rely on intuition and subjective arguments about what is good or not. Intuition and experience can get you very far, but different players have different intuitions about what is "best". On top of this, there’s an uncomfortable dogma surrounding the topic of HPS, and just mentioning the word gets you harassed and dogpiled on. I think the community is wrong about HPS.</p>
+                    <p>Second, the community is still split on whether HPS is a valid performance metric because of the confounding effects mentioned above. This has left us in a bit of a theorycrafting “quagmire” - without an objective measure of performance, players instead rely on intuition and subjective arguments about what is good or not. Intuition and experience can get you very far, but different players have different intuitions about what is "best". Layered on top of this is an uncomfortable dogma surrounding the topic of HPS, and just mentioning the word gets you harassed and dogpiled on. I think the community is wrong about HPS.</p>
                     <p>By analyzing large datasets while controlling for confounding variables we can isolate factors that you do have control over - rotation, playstyle, gearing choices, haste breakpoints, etc. across different encounters and conditions. I don't believe these fundamental questions are unanswerable, but we need a new approach. That is the motivation for this tool: combining traditional theorycrafting with data-driven analyses to address fundamental questions and to advance our understanding of the spec.</p>
                 </div>
 
@@ -1503,6 +1548,7 @@
         // Chart instances
         let hpsChart = null;
         let hasteChart = null;
+        let rotationChart = null;
 
         // Parse duration string (e.g., "4m 24s") to seconds
         function parseDurationToSeconds(duration) {
@@ -1737,14 +1783,59 @@
 
                 const ctx = document.getElementById('hasteChart').getContext('2d');
 
-                // Parse data for chart (filter out records with Haste = 0)
+                // Parse data for chart (filter out records with HasteGear = 0)
                 const chartData = data
-                    .filter(row => row.Haste > 0)
+                    .filter(row => row.HasteGear > 0)
                     .map(row => ({
-                        x: row.Haste,
+                        x: row.HasteGear,
                         y: row.HPS,
                         name: row.Name
                     }));
+
+                // Calculate binned averages (bins of 50, starting from 100)
+                const binSize = 50;
+                const binStart = 100;
+                const bins = {};
+
+                chartData.forEach(point => {
+                    if (point.x >= binStart) {
+                        const binIndex = Math.floor((point.x - binStart) / binSize);
+                        const binLabel = binStart + binIndex * binSize;
+                        if (!bins[binLabel]) {
+                            bins[binLabel] = { sum: 0, count: 0, values: [] };
+                        }
+                        bins[binLabel].sum += point.y;
+                        bins[binLabel].count += 1;
+                        bins[binLabel].values.push(point.y);
+                    }
+                });
+
+                // Create sorted bin labels and calculate averages with error bars
+                const binLabels = Object.keys(bins).map(Number).sort((a, b) => a - b);
+                const binAverages = binLabels.map(label => {
+                    const bin = bins[label];
+                    const mean = bin.sum / bin.count;
+
+                    // Calculate standard deviation
+                    let stdDev = 0;
+                    if (bin.count > 1) {
+                        const squaredDiffs = bin.values.map(v => Math.pow(v - mean, 2));
+                        const variance = squaredDiffs.reduce((a, b) => a + b, 0) / (bin.count - 1);
+                        stdDev = Math.sqrt(variance);
+                    }
+
+                    // Error = std_dev / sqrt(n) (Standard Error of the Mean)
+                    const error = stdDev / Math.sqrt(bin.count);
+
+                    return {
+                        x: label + binSize / 2,  // Center of bin
+                        y: mean,
+                        count: bin.count,
+                        binRange: `${label}-${label + binSize - 1}`,
+                        error: error,
+                        stdDev: stdDev
+                    };
+                });
 
                 // Calculate min for y-axis
                 const hpsValues = chartData.map(d => d.y);
@@ -1756,32 +1847,101 @@
                     hasteChart.destroy();
                 }
 
+                // Custom plugin for error bars
+                const errorBarPlugin = {
+                    id: 'errorBars',
+                    afterDatasetsDraw: function(chart) {
+                        const ctx = chart.ctx;
+                        const barDataset = chart.data.datasets.find(ds => ds.label === 'Avg HPS by Haste Bin');
+                        if (!barDataset) return;
+
+                        const meta = chart.getDatasetMeta(chart.data.datasets.indexOf(barDataset));
+
+                        ctx.save();
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                        ctx.lineWidth = 2;
+
+                        meta.data.forEach((bar, index) => {
+                            const dataPoint = binAverages[index];
+                            if (dataPoint && dataPoint.error > 0) {
+                                const x = bar.x;
+                                const yScale = chart.scales.y;
+                                const yTop = yScale.getPixelForValue(dataPoint.y + dataPoint.error);
+                                const yBottom = yScale.getPixelForValue(dataPoint.y - dataPoint.error);
+                                const capWidth = 6;
+
+                                // Vertical line
+                                ctx.beginPath();
+                                ctx.moveTo(x, yTop);
+                                ctx.lineTo(x, yBottom);
+                                ctx.stroke();
+
+                                // Top cap
+                                ctx.beginPath();
+                                ctx.moveTo(x - capWidth, yTop);
+                                ctx.lineTo(x + capWidth, yTop);
+                                ctx.stroke();
+
+                                // Bottom cap
+                                ctx.beginPath();
+                                ctx.moveTo(x - capWidth, yBottom);
+                                ctx.lineTo(x + capWidth, yBottom);
+                                ctx.stroke();
+                            }
+                        });
+
+                        ctx.restore();
+                    }
+                };
+
                 // Create new chart
                 hasteChart = new Chart(ctx, {
                     type: 'scatter',
                     data: {
-                        datasets: [{
-                            label: 'HPS vs Haste',
-                            data: chartData,
-                            backgroundColor: 'rgba(102, 126, 234, 0.6)',
-                            borderColor: 'rgba(102, 126, 234, 1)',
-                            borderWidth: 1,
-                            pointRadius: 5,
-                            pointHoverRadius: 7
-                        }]
+                        datasets: [
+                            {
+                                label: 'Avg HPS by Haste Bin',
+                                type: 'bar',
+                                data: binAverages,
+                                backgroundColor: 'rgba(255, 159, 64, 0.4)',
+                                borderColor: 'rgba(255, 159, 64, 1)',
+                                borderWidth: 1,
+                                barThickness: 20,
+                                order: 2
+                            },
+                            {
+                                label: 'HPS vs Haste',
+                                type: 'scatter',
+                                data: chartData,
+                                backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                                borderColor: 'rgba(102, 126, 234, 1)',
+                                borderWidth: 1,
+                                pointRadius: 5,
+                                pointHoverRadius: 7,
+                                order: 1
+                            }
+                        ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: true,
                         plugins: {
                             legend: {
-                                display: false
+                                display: true,
+                                labels: {
+                                    color: '#8b9dc3'
+                                }
                             },
                             tooltip: {
                                 callbacks: {
                                     label: function(context) {
-                                        const point = chartData[context.dataIndex];
-                                        return `${point.name}: ${point.y.toFixed(2)} HPS at ${point.x} Haste`;
+                                        if (context.dataset.label === 'HPS vs Haste') {
+                                            const point = chartData[context.dataIndex];
+                                            return `${point.name}: ${point.y.toFixed(2)} HPS at ${point.x} Haste`;
+                                        } else {
+                                            const bin = binAverages[context.dataIndex];
+                                            return `Haste ${bin.binRange}: Avg ${bin.y.toFixed(2)} ± ${bin.error.toFixed(2)} HPS (n=${bin.count})`;
+                                        }
                                     }
                                 }
                             }
@@ -1830,10 +1990,218 @@
                                 }
                             }
                         }
-                    }
+                    },
+                    plugins: [errorBarPlugin]
                 });
             } catch (error) {
                 console.error('Error loading haste chart data:', error);
+            }
+        }
+
+        // Load and update Rotation chart with average HPS by primary rotation
+        async function updateRotationChart() {
+            const dataset = document.getElementById('dataset').value;
+            const totalHealers = document.getElementById('totalHealers').value;
+            const shadowPriest = document.getElementById('shadowPriest').value;
+            const innervates = document.getElementById('innervates').value;
+            const rotatingOnTank = document.getElementById('rotatingOnTank').value;
+            const nDruid = document.getElementById('nDruid').value;
+            const nPaladin = document.getElementById('nPaladin').value;
+            const nHPriest = document.getElementById('nHPriest').value;
+            const nDPriest = document.getElementById('nDPriest').value;
+            const nShaman = document.getElementById('nShaman').value;
+            const regions = getSelectedRegions();
+
+            // Build URL with all filters
+            let url = `/api/top/10000?dataset=${dataset}`;
+            if (currentFilter !== null) {
+                url += `&naturesGrace=${currentFilter}`;
+            }
+            if (totalHealers) url += `&totalHealers=${totalHealers}`;
+            if (shadowPriest) url += `&vampiricTouch=${shadowPriest}`;
+            if (innervates) url += `&innervates=${innervates}`;
+            if (rotatingOnTank) url += `&rotatingOnTank=${rotatingOnTank}`;
+            if (nDruid) url += `&nDruid=${nDruid}`;
+            if (nPaladin) url += `&nPaladin=${nPaladin}`;
+            if (nHPriest) url += `&nHPriest=${nHPriest}`;
+            if (nDPriest) url += `&nDPriest=${nDPriest}`;
+            if (nShaman) url += `&nShaman=${nShaman}`;
+            if (regions) url += `&regions=${regions}`;
+
+            try {
+                const response = await fetch(url);
+                const result = await response.json();
+                const data = result.data;
+
+                const ctx = document.getElementById('rotationChart').getContext('2d');
+
+                // Group by Rotation1 and calculate averages
+                const rotationStats = {};
+                data.forEach(row => {
+                    const rotation = row.Rotation1;
+                    if (rotation && rotation.trim()) {
+                        if (!rotationStats[rotation]) {
+                            rotationStats[rotation] = { sum: 0, count: 0, values: [] };
+                        }
+                        rotationStats[rotation].sum += row.HPS;
+                        rotationStats[rotation].count += 1;
+                        rotationStats[rotation].values.push(row.HPS);
+                    }
+                });
+
+                // Calculate averages and sort by average HPS descending
+                const rotationData = Object.entries(rotationStats)
+                    .filter(([_, stats]) => stats.count >= 5)  // Min 5 samples
+                    .map(([rotation, stats]) => {
+                        const mean = stats.sum / stats.count;
+                        let stdDev = 0;
+                        if (stats.count > 1) {
+                            const squaredDiffs = stats.values.map(v => Math.pow(v - mean, 2));
+                            const variance = squaredDiffs.reduce((a, b) => a + b, 0) / (stats.count - 1);
+                            stdDev = Math.sqrt(variance);
+                        }
+                        const error = stdDev / Math.sqrt(stats.count);
+                        return {
+                            rotation,
+                            avg: mean,
+                            count: stats.count,
+                            error,
+                            stdDev
+                        };
+                    })
+                    .sort((a, b) => b.avg - a.avg);
+
+                // Calculate min and max for x-axis
+                const minAvgHPS = Math.min(...rotationData.map(d => d.avg));
+                const maxAvgHPS = Math.max(...rotationData.map(d => d.avg));
+                const xAxisMin = Math.max(0, minAvgHPS - 50);
+                const xAxisMax = maxAvgHPS + 50;
+
+                // Destroy existing chart if it exists
+                if (rotationChart) {
+                    rotationChart.destroy();
+                }
+
+                // Custom plugin for error bars on rotation chart
+                const rotationErrorBarPlugin = {
+                    id: 'rotationErrorBars',
+                    afterDatasetsDraw: function(chart) {
+                        const ctx = chart.ctx;
+                        const meta = chart.getDatasetMeta(0);
+
+                        ctx.save();
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                        ctx.lineWidth = 2;
+
+                        meta.data.forEach((bar, index) => {
+                            const dataPoint = rotationData[index];
+                            if (dataPoint && dataPoint.error > 0) {
+                                const y = bar.y;
+                                const xScale = chart.scales.x;
+                                const xRight = xScale.getPixelForValue(dataPoint.avg + dataPoint.error);
+                                const xLeft = xScale.getPixelForValue(dataPoint.avg - dataPoint.error);
+                                const capWidth = 4;
+
+                                // Horizontal line
+                                ctx.beginPath();
+                                ctx.moveTo(xLeft, y);
+                                ctx.lineTo(xRight, y);
+                                ctx.stroke();
+
+                                // Left cap
+                                ctx.beginPath();
+                                ctx.moveTo(xLeft, y - capWidth);
+                                ctx.lineTo(xLeft, y + capWidth);
+                                ctx.stroke();
+
+                                // Right cap
+                                ctx.beginPath();
+                                ctx.moveTo(xRight, y - capWidth);
+                                ctx.lineTo(xRight, y + capWidth);
+                                ctx.stroke();
+                            }
+                        });
+
+                        ctx.restore();
+                    }
+                };
+
+                // Create new chart
+                rotationChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: rotationData.map(d => d.rotation),
+                        datasets: [{
+                            label: 'Average HPS',
+                            data: rotationData.map(d => d.avg),
+                            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const d = rotationData[context.dataIndex];
+                                        return `Avg: ${d.avg.toFixed(2)} ± ${d.error.toFixed(2)} HPS (n=${d.count})`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                min: xAxisMin,
+                                max: xAxisMax,
+                                title: {
+                                    display: true,
+                                    text: 'Average HPS',
+                                    color: '#8b9dc3',
+                                    font: { size: 14, weight: 'bold' }
+                                },
+                                ticks: { color: '#8b9dc3' },
+                                grid: { color: 'rgba(139, 157, 195, 0.1)' }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Primary Rotation',
+                                    color: '#8b9dc3',
+                                    font: { size: 14, weight: 'bold' }
+                                },
+                                ticks: { color: '#8b9dc3' },
+                                grid: { color: 'rgba(139, 157, 195, 0.1)' }
+                            }
+                        }
+                    },
+                    plugins: [rotationErrorBarPlugin]
+                });
+            } catch (error) {
+                console.error('Error loading rotation chart data:', error);
+            }
+        }
+
+        // Toggle chart collapse/expand
+        function toggleChart(chartId, button) {
+            const chartContent = document.getElementById(chartId + 'Content');
+
+            if (chartContent.classList.contains('collapsed')) {
+                chartContent.classList.remove('collapsed');
+                chartContent.style.maxHeight = chartContent.scrollHeight + 'px';
+                button.textContent = 'Collapse';
+            } else {
+                chartContent.style.maxHeight = chartContent.scrollHeight + 'px';
+                setTimeout(() => {
+                    chartContent.classList.add('collapsed');
+                }, 10);
+                button.textContent = 'Expand';
             }
         }
 
@@ -1952,8 +2320,8 @@
                         <td>${row.Region || 'N/A'}</td>
                         <td>${row.Duration || 'N/A'}</td>
                         <td><strong>${typeof row.HPS === 'number' && !isNaN(row.HPS) ? row.HPS.toFixed(2) : 'N/A'}</strong></td>
-                        <td>${typeof row.Haste === 'number' && !isNaN(row.Haste) ? row.Haste : 'N/A'}</td>
-                        <td>${typeof row.Spirit === 'number' && !isNaN(row.Spirit) ? row.Spirit : 'N/A'}</td>
+                        <td>${typeof row.HasteGear === 'number' && !isNaN(row.HasteGear) && row.HasteGear !== 0 ? row.HasteGear : '-'}</td>
+                        <td>${typeof row.Spirit === 'number' && !isNaN(row.Spirit) && row.Spirit !== 0 ? row.Spirit : '-'}</td>
                         <td>${row.TotalHealers || 'N/A'}</td>
                         <td>${typeof row.InnervateCount === 'number' ? row.InnervateCount : 'N/A'}</td>
                         <td>${row.VampiricTouch || 'N/A'}</td>
@@ -1969,6 +2337,7 @@
                 // Update charts with all filtered data (separate from table)
                 updateChart();
                 updateHasteChart();
+                updateRotationChart();
 
                 // Update table height after loading data
                 setTimeout(updateTableHeight, 100);
@@ -2107,7 +2476,7 @@
             const stats = data.player_stats || {};
             document.getElementById('resultIntellect').textContent = stats.has_stats ? stats.intellect : '?';
             document.getElementById('resultSpirit').textContent = stats.has_stats ? stats.spirit : '?';
-            document.getElementById('resultHaste').textContent = stats.has_stats ? stats.haste : '?';
+            document.getElementById('resultHaste').textContent = stats.has_stats ? stats.haste_gear : '?';
 
             // Buffs
             document.getElementById('resultVT').innerHTML = data.has_vampiric_touch

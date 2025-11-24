@@ -272,7 +272,8 @@ def analyze_ranking(ranking, rank_number, encounter_name):
         stats = data['player_stats']
         intellect = stats.get('intellect', 0) if stats.get('has_stats') else 0
         spirit = stats.get('spirit', 0) if stats.get('has_stats') else 0
-        haste = stats.get('haste', 0) if stats.get('has_stats') else 0
+        haste_summary = stats.get('haste_summary', 0) if stats.get('has_stats') else 0
+        haste_gear = stats.get('haste_gear', 0) if stats.get('has_stats') else 0
 
         # Extract trinkets
         trinkets_data = data['player_trinkets']
@@ -328,7 +329,8 @@ def analyze_ranking(ranking, rank_number, encounter_name):
             'ReportID': report_code,
             'ReportLink': report_link,
             'HPS': round(total_hps, 2),
-            'Haste': haste,
+            'HasteSummary': haste_summary,
+            'HasteGear': haste_gear,
             'Spirit': spirit,
             'Intellect': intellect,
             'TotalHealers': data['total_healers'],
@@ -374,7 +376,8 @@ def analyze_ranking(ranking, rank_number, encounter_name):
             'ReportID': report_code,
             'ReportLink': '',
             'HPS': 0,
-            'Haste': 0,
+            'HasteSummary': 0,
+            'HasteGear': 0,
             'Spirit': 0,
             'Intellect': 0,
             'TotalHealers': 0,
@@ -449,7 +452,7 @@ def main():
         # Prepare CSV
         fieldnames = [
             'Rank', 'Name', 'Server', 'Region', 'Date', 'Duration', 'ReportID', 'ReportLink', 'HPS',
-            'Haste', 'Spirit', 'Intellect', 'TotalHealers',
+            'HasteSummary', 'HasteGear', 'Spirit', 'Intellect', 'TotalHealers',
             'nDruid', 'nPaladin', 'nHPriest', 'nDPriest', 'nShaman',
             'RaidDamageTakenPerSecond',
             'VampiricTouch', 'InnervateCount', 'Bloodlust', 'NaturesGrace',
