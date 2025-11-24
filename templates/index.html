@@ -787,9 +787,62 @@
             font-size: 0.9em;
             line-height: 1.5;
         }
+
+        /* Language Toggle Styles */
+        .language-toggle {
+            position: fixed;
+            top: 15px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #1d1f1c;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #2a3f5f;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .language-toggle span {
+            color: #bebeb1;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+
+        .lang-btn {
+            padding: 6px 12px;
+            border: 1px solid #3a3d3a;
+            background: #2a2d2a;
+            color: #bebeb1;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .lang-btn:hover {
+            background: #3a3d3a;
+            color: #fff;
+            border-color: #4a4d4a;
+        }
+
+        .lang-btn.active {
+            background: #667eea;
+            color: #fff;
+            border-color: #667eea;
+        }
     </style>
 </head>
 <body>
+    <!-- Language Toggle -->
+    <div class="language-toggle">
+        <span>Language:</span>
+        <button class="lang-btn active" id="langEN" onclick="setLanguage('en')">EN</button>
+        <button class="lang-btn" id="langZH" onclick="setLanguage('zh')">中文</button>
+    </div>
+
     <div class="sidebar">
         <div class="sidebar-tab active" onclick="switchTab('analysis')">Analysis Tool</div>
         <div class="sidebar-tab" onclick="switchTab('report')">Report Analyzer</div>
@@ -804,9 +857,9 @@
                 <h1 id="pageTitle">Lifebloom - A Restoration <span class="druid-text">Druid</span> Analysis Tool</h1>
 
                 <div class="notice-banner">
-                    <h3>Notice</h3>
-                    <p>Welcome to <span style="color: #39c07f; font-weight: 600;">Lifebloom</span>! This is an application that collects and structures TBC Resto Druid data from WarcraftLogs in order to help facilitate retrospective data analyses by and for the community. This app is still in development in preparation for the next iteration of TBC Classic.</p>
-                    <p>For more information about the tool and how to contact the author, please check out the "About" tab. Thanks!</p>
+                    <h3 data-i18n="notice.title">Notice</h3>
+                    <p data-i18n="notice.welcome">Welcome to <span style="color: #39c07f; font-weight: 600;">Lifebloom</span>! This is an application that collects and structures TBC Resto Druid data from WarcraftLogs in order to help facilitate retrospective data analyses by and for the community. This app is still in development in preparation for the next iteration of TBC Classic.</p>
+                    <p data-i18n="notice.moreInfo">For more information about the tool and how to contact the author, please check out the "About" tab. Thanks!</p>
                     <p class="signature">- Mercy</p>
                 </div>
 
@@ -814,19 +867,19 @@
 
         <div class="icon-buttons">
             <div class="icon-button-container">
-                <div class="icon-label">Deep Resto</div>
+                <div class="icon-label" data-i18n="icons.deepResto">Deep Resto</div>
                 <button class="icon-button" id="treeOfLifeBtn">
                     <img src="/static/icons/treeoflife.jpg" alt="Tree of Life">
                 </button>
             </div>
             <div class="icon-button-container">
-                <div class="icon-label">Dreamstate</div>
+                <div class="icon-label" data-i18n="icons.dreamstate">Dreamstate</div>
                 <button class="icon-button" id="dreamstateBtn">
                     <img src="/static/icons/dreamstate.jpg" alt="Dreamstate">
                 </button>
             </div>
             <div class="icon-button-container">
-                <div class="icon-label">Nature's Grace</div>
+                <div class="icon-label" data-i18n="icons.naturesGrace">Nature's Grace</div>
                 <button class="icon-button" id="naturesGraceBtn">
                     <img src="/static/icons/naturesgrace.jpg" alt="Nature's Grace">
                 </button>
@@ -855,7 +908,7 @@
                     <div class="filter-item">
                         <label for="dataset">Boss:</label>
                         <select id="dataset" onchange="loadData()">
-                            <option value="brutallus">Brutallus</option>
+                            <option value="brutallus" data-i18n="boss.brutallus">Brutallus</option>
                             <option value="felmyst">Felmyst</option>
                         </select>
                     </div>
@@ -978,7 +1031,7 @@
         <div class="charts-grid">
             <div class="chart-container">
                 <div class="chart-header">
-                    <div class="chart-title">HPS vs Haste</div>
+                    <div class="chart-title" data-i18n="chart.hpsVsHaste">HPS vs Haste</div>
                     <button class="chart-collapse-btn" onclick="toggleChart('hasteChart', this)">Collapse</button>
                 </div>
                 <div class="chart-content" id="hasteChartContent">
@@ -1014,6 +1067,58 @@
                 <button class="collapse-btn" id="dataDictBtn">Expand</button>
             </div>
             <div class="data-dictionary-content" id="dataDictContent">
+                <!-- Talents -->
+                <div class="dict-category">
+                    <div class="dict-category-title">Talents & Spec</div>
+                    <div class="dict-grid">
+                        <div class="dict-item">
+                            <div class="dict-term">Deep Resto / Tree of Life</div>
+                            <div class="dict-definition">Full Restoration spec with Tree of Life form. Provides better mana efficiency and rotational flexibility compared to Dreamstate and Nautre's Grace.</div>
+                        </div>
+                        <div class="dict-item">
+                            <div class="dict-term">Dreamstate</div>
+                            <div class="dict-definition">Hybrid spec investing in Balance for "Improved Faerie Fire", though called Dreamstate for historical reasons. In this spec, Druids sacrifice Tree of Life and Swiftmend.</div>
+                        </div>
+                        <div class="dict-item">
+                            <div class="dict-term">Nature's Grace</div>
+                            <div class="dict-definition">Balance talent that reduces next cast time by 0.5s after a spell crit, supporting a Regrowth-heavy playstyle with considerably high HPS but with significant mana constraints. In WarcraftLogs, Deep Resto and Nature's Grace are both categorized as Restoration. To identify Nature's Grace builds, we check if the Druid had the Nature's Grace buff at any point during the encounter.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Playstyle & Rotation -->
+                <div class="dict-category">
+                    <div class="dict-category-title">Playstyle & Rotation</div>
+                    <div class="dict-item" style="margin-bottom: 15px;">
+                        <div class="dict-term">Rotation</div>
+                        <div class="dict-definition">
+                            <p style="margin-bottom: 10px;">A "rotation" is the sequence of spells that the Druid casts, either while maintaining Lifebloom on the tank(s) or not. For an introductory overview on rotations, I'd refer you to SixPacKyx's <a href="https://www.wowhead.com/tbc/guide/classes/druid/healer-rotation-cooldowns-abilities-pve" target="_blank" style="color: #667eea;">WowHead guide</a> under the "Rolling Lifebloom: Advanced Restoration Druid Healing Rotation" section, and additionally giansm's <a href="https://web.archive.org/web/20080913120521/http://elitistjerks.com/f31/t17783-druid_raiding_tree/#Healing_Strategies" target="_blank" style="color: #667eea;">Elitist Jerks guide</a> under the "Healing Strategies" section.</p>
+                            <p style="margin-bottom: 10px;">To help discuss rotations more easily, I've created a standard notation for rotations: <strong style="color: #DE772A;">xLB yI zRG</strong></p>
+                            <ul style="margin-left: 20px; margin-top: 5px;">
+                                <li><strong>x:</strong> The number of tanks you are rolling Lifebloom on during a rotation.</li>
+                                <li><strong>y:</strong> The number of instant cast spells used during a rotation (Rejuv, Swiftmend, Lifebloom on non-tanks, etc.)</li>
+                                <li><strong>z:</strong> The number of Regrowth casts used during the rotation.</li>
+                            </ul>
+                            <p style="margin-top: 15px; margin-bottom: 10px;">To illustrate, here are a few examples:</p>
+                            <ul style="margin-left: 20px;">
+                                <li><strong style="color: #DE772A;">1LB 1I 1RG</strong> - A typical unhasted 1 tank rotation. The Druid refreshes Lifebloom on the tank, uses an instant cast spell (perhaps refreshing Rejuv on the tank), and casts 1 Regrowth.</li>
+                                <li><strong style="color: #DE772A;">2LB 2I 0RG</strong> - A typical unhasted 2 tank rotation. The Druid refreshes Lifebloom on two tanks and uses two instant cast spells, but does not cast any Regrowths.</li>
+                                <li><strong style="color: #DE772A;">0LB 0I 5RG</strong> - The Druid does not cast Lifebloom on any tank, but instead casts Regrowth five times in a row.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="dict-grid">
+                        <div class="dict-item">
+                            <div class="dict-term">Rotating on Tank</div>
+                            <div class="dict-definition">We programatically list all of the rotations the Druid did over the course of the encounter, and check if at least 70% (chosen arbitrarily) of the Druid's rotations on a fight include a Lifebloom on at least one of the tanks (see Report Analyzer tool for more details). If so, then Rotating on Tank is "Yes", otherwise "No".</div>
+                        </div>
+                        <div class="dict-item">
+                            <div class="dict-term">Primary Rotation</div>
+                            <div class="dict-definition">The most frequently used rotation pattern during the encounter.</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Player Information -->
                 <div class="dict-category">
                     <div class="dict-category-title">Player Information</div>
@@ -1100,58 +1205,6 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Playstyle & Rotation -->
-                <div class="dict-category">
-                    <div class="dict-category-title">Playstyle & Rotation</div>
-                    <div class="dict-item" style="margin-bottom: 15px;">
-                        <div class="dict-term">Rotation</div>
-                        <div class="dict-definition">
-                            <p style="margin-bottom: 10px;">A "rotation" is the sequence of spells that the Druid casts, either while maintaining Lifebloom on the tank(s) or not. For an introductory overview on rotations, I'd refer you to SixPacKyx's <a href="https://www.wowhead.com/tbc/guide/classes/druid/healer-rotation-cooldowns-abilities-pve" target="_blank" style="color: #667eea;">WowHead guide</a> under the "Rolling Lifebloom: Advanced Restoration Druid Healing Rotation" section, and additionally giansm's <a href="https://web.archive.org/web/20080913120521/http://elitistjerks.com/f31/t17783-druid_raiding_tree/#Healing_Strategies" target="_blank" style="color: #667eea;">Elitist Jerks guide</a> under the "Healing Strategies" section.</p>
-                            <p style="margin-bottom: 10px;">To help discuss rotations more easily, I've created a standard notation for rotations: <strong style="color: #DE772A;">xLB yI zRG</strong></p>
-                            <ul style="margin-left: 20px; margin-top: 5px;">
-                                <li><strong>x:</strong> The number of tanks you are rolling Lifebloom on during a rotation.</li>
-                                <li><strong>y:</strong> The number of instant cast spells used during a rotation (Rejuv, Swiftmend, Lifebloom on non-tanks, etc.)</li>
-                                <li><strong>z:</strong> The number of Regrowth casts used during the rotation.</li>
-                            </ul>
-                            <p style="margin-top: 15px; margin-bottom: 10px;">To illustrate, here are a few examples:</p>
-                            <ul style="margin-left: 20px;">
-                                <li><strong style="color: #DE772A;">1LB 1I 1RG</strong> - A typical unhasted 1 tank rotation. The Druid refreshes Lifebloom on the tank, uses an instant cast spell (perhaps refreshing Rejuv on the tank), and casts 1 Regrowth.</li>
-                                <li><strong style="color: #DE772A;">2LB 2I 0RG</strong> - A typical unhasted 2 tank rotation. The Druid refreshes Lifebloom on two tanks and uses two instant cast spells, but does not cast any Regrowths.</li>
-                                <li><strong style="color: #DE772A;">0LB 0I 5RG</strong> - The Druid does not cast Lifebloom on any tank, but instead casts Regrowth five times in a row.</li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="dict-grid">
-                        <div class="dict-item">
-                            <div class="dict-term">Rotating on Tank</div>
-                            <div class="dict-definition">We programatically list all of the rotations the Druid did over the course of the encounter, and check if at least 70% (chosen arbitrarily) of the Druid's rotations on a fight include a Lifebloom on at least one of the tanks (see Report Analyzer tool for more details). If so, then Rotating on Tank is "Yes", otherwise "No".</div>
-                        </div>
-                        <div class="dict-item">
-                            <div class="dict-term">Primary Rotation</div>
-                            <div class="dict-definition">The most frequently used rotation pattern during the encounter.</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Talents -->
-                <div class="dict-category">
-                    <div class="dict-category-title">Talents & Spec</div>
-                    <div class="dict-grid">
-                        <div class="dict-item">
-                            <div class="dict-term">Deep Resto / Tree of Life</div>
-                            <div class="dict-definition">Full Restoration spec with Tree of Life form. Provides better mana efficiency and rotational flexibility compared to Dreamstate and Nautre's Grace.</div>
-                        </div>
-                        <div class="dict-item">
-                            <div class="dict-term">Dreamstate</div>
-                            <div class="dict-definition">Hybrid spec investing in Balance for "Improved Faerie Fire", though called Dreamstate for historical reasons. In this spec, Druids sacrifice Tree of Life and Swiftmend.</div>
-                        </div>
-                        <div class="dict-item">
-                            <div class="dict-term">Nature's Grace</div>
-                            <div class="dict-definition">Balance talent that reduces next cast time by 0.5s after a spell crit, supporting a Regrowth-heavy playstyle with considerably high HPS but with significant mana constraints. In WarcraftLogs, Deep Resto and Nature's Grace are both categorized as Restoration. To identify Nature's Grace builds, we check if the Druid had the Nature's Grace buff at any point during the encounter.</div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -1178,7 +1231,7 @@
                         <th>Region</th>
                         <th>Duration</th>
                         <th>HPS</th>
-                        <th>Haste</th>
+                        <th data-i18n="table.haste">Haste</th>
                         <th>Spirit</th>
                         <th>Total<br>Healers</th>
                         <th>Innervates</th>
@@ -1222,7 +1275,7 @@
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <label for="bossName">Boss:</label>
                             <select id="bossName" style="width: 180px;">
-                                <option value="Brutallus">Brutallus</option>
+                                <option value="Brutallus" data-i18n="boss.brutallus">Brutallus</option>
                                 <option value="Felmyst">Felmyst</option>
                                 <option value="Eredar Twins">Eredar Twins</option>
                                 <option value="M'uru">M'uru</option>
@@ -1508,6 +1561,82 @@
     </div>
 
     <script>
+        // Language switching
+        let currentLanguage = localStorage.getItem('language') || 'en';
+
+        // Translations object
+        const translations = {
+            en: {
+                'notice.title': 'Notice',
+                'notice.welcome': 'Welcome to <span style="color: #39c07f; font-weight: 600;">Lifebloom</span>! This is an application that collects and structures TBC Resto Druid data from WarcraftLogs in order to help facilitate retrospective data analyses by and for the community. This app is still in development in preparation for the next iteration of TBC Classic.',
+                'notice.moreInfo': 'For more information about the tool and how to contact the author, please check out the "About" tab. Thanks!',
+                'icons.deepResto': 'Deep Resto',
+                'icons.dreamstate': 'Dreamstate',
+                'icons.naturesGrace': "Nature's Grace",
+                'boss.brutallus': 'Brutallus',
+                'chart.haste': 'Haste',
+                'chart.hpsVsHaste': 'HPS vs Haste',
+                'chart.avgHpsByHasteBin': 'Avg HPS by Haste Bin',
+                'table.haste': 'Haste'
+            },
+            zh: {
+                'notice.title': '公告',
+                'notice.welcome': '欢迎来到 <span style="color: #39c07f; font-weight: 600;">Lifebloom</span>！这是一款从 WarcraftLogs 收集并整理《燃烧的远征》恢复德鲁伊数据的应用程序，旨在帮助社区进行回顾性数据分析。本应用仍在开发中，为《燃烧的远征》怀旧服的下一阶段做准备。',
+                'notice.moreInfo': '如需了解更多关于本工具的信息或联系作者，请查看"关于"选项卡。感谢！',
+                'icons.deepResto': '生命之树',
+                'icons.dreamstate': '梦境',
+                'icons.naturesGrace': '自然之赐',
+                'boss.brutallus': '布鲁塔卢斯',
+                'chart.haste': '急速',
+                'chart.hpsVsHaste': 'HPS vs 急速',
+                'chart.avgHpsByHasteBin': 'Avg HPS by 急速 Bin',
+                'table.haste': '急速'
+            }
+        };
+
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            localStorage.setItem('language', lang);
+
+            // Update button states
+            document.getElementById('langEN').classList.toggle('active', lang === 'en');
+            document.getElementById('langZH').classList.toggle('active', lang === 'zh');
+
+            // Apply translations
+            applyTranslations(lang);
+
+            // Refresh charts if they exist
+            if (typeof updateHasteChart === 'function') {
+                updateHasteChart();
+            }
+            if (typeof updateChart === 'function') {
+                updateChart();
+            }
+            if (typeof updateRotationChart === 'function') {
+                updateRotationChart();
+            }
+        }
+
+        function applyTranslations(lang) {
+            const langData = translations[lang];
+            if (!langData) return;
+
+            // Find all elements with data-i18n attribute and translate them
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                if (langData[key]) {
+                    element.innerHTML = langData[key];
+                }
+            });
+
+            console.log('Language set to:', lang);
+        }
+
+        // Initialize language on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            setLanguage(currentLanguage);
+        });
+
         // Tab switching
         function switchTab(tabName, updateHash = true) {
             // Hide all tabs
@@ -1806,9 +1935,9 @@
                         name: row.Name
                     }));
 
-                // Calculate binned averages (bins of 50, starting from 100)
+                // Calculate binned averages (bins of 50, starting from 100 for best, 0 for all)
                 const binSize = 50;
-                const binStart = 100;
+                const binStart = dataSource === 'all' ? 0 : 100;
                 const bins = {};
 
                 chartData.forEach(point => {
@@ -1866,7 +1995,7 @@
                     id: 'errorBars',
                     afterDatasetsDraw: function(chart) {
                         const ctx = chart.ctx;
-                        const barDataset = chart.data.datasets.find(ds => ds.label === 'Avg HPS by Haste Bin');
+                        const barDataset = chart.data.datasets.find(ds => ds.label === translations[currentLanguage]['chart.avgHpsByHasteBin']);
                         if (!barDataset) return;
 
                         const meta = chart.getDatasetMeta(chart.data.datasets.indexOf(barDataset));
@@ -1914,7 +2043,7 @@
                     data: {
                         datasets: [
                             {
-                                label: 'Avg HPS by Haste Bin',
+                                label: translations[currentLanguage]['chart.avgHpsByHasteBin'],
                                 type: 'bar',
                                 data: binAverages,
                                 backgroundColor: 'rgba(255, 159, 64, 0.4)',
@@ -1924,7 +2053,7 @@
                                 order: 2
                             },
                             {
-                                label: 'HPS vs Haste',
+                                label: translations[currentLanguage]['chart.hpsVsHaste'],
                                 type: 'scatter',
                                 data: chartData,
                                 backgroundColor: 'rgba(102, 126, 234, 0.6)',
@@ -1949,12 +2078,13 @@
                             tooltip: {
                                 callbacks: {
                                     label: function(context) {
-                                        if (context.dataset.label === 'HPS vs Haste') {
+                                        const hasteLabel = translations[currentLanguage]['chart.haste'];
+                                        if (context.dataset.label === translations[currentLanguage]['chart.hpsVsHaste']) {
                                             const point = chartData[context.dataIndex];
-                                            return `${point.name}: ${point.y.toFixed(2)} HPS at ${point.x} Haste`;
+                                            return `${point.name}: ${point.y.toFixed(2)} HPS at ${point.x} ${hasteLabel}`;
                                         } else {
                                             const bin = binAverages[context.dataIndex];
-                                            return `Haste ${bin.binRange}: Avg ${bin.y.toFixed(2)} ± ${bin.error.toFixed(2)} HPS (n=${bin.count})`;
+                                            return `${hasteLabel} ${bin.binRange}: Avg ${bin.y.toFixed(2)} ± ${bin.error.toFixed(2)} HPS (n=${bin.count})`;
                                         }
                                     }
                                 }
@@ -1964,7 +2094,7 @@
                             x: {
                                 title: {
                                     display: true,
-                                    text: 'Haste',
+                                    text: translations[currentLanguage]['chart.haste'],
                                     color: '#8b9dc3',
                                     font: {
                                         size: 14,
