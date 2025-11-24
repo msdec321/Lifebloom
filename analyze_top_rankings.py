@@ -113,9 +113,17 @@ def wait_for_rate_limit():
         print(f"  🔄 Rechecking rate limit status...")
 
 
-def fetch_rankings(encounter_id, start_rank=1, end_rank=100):
+def fetch_rankings(encounter_id, start_rank=1, end_rank=100, region=None):
     """
     Fetch rankings for a specific encounter within a rank range.
+
+    Args:
+        encounter_id: The WarcraftLogs encounter ID
+        start_rank: Starting rank (1-indexed)
+        end_rank: Ending rank (inclusive)
+        region: Optional region filter (US, EU, KR, TW, CN)
+                Note: For frozen zones (e.g., TBC Classic), filtering is done
+                client-side since the API doesn't support serverRegion filter.
 
     Returns: (rankings_list, encounter_name)
     """
@@ -141,6 +149,8 @@ def fetch_rankings(encounter_id, start_rank=1, end_rank=100):
     for page in range(start_page, end_page + 1):
         print(f"Fetching rankings page {page}...")
 
+        # Always fetch without serverRegion filter (doesn't work for frozen zones like TBC Classic)
+        # We'll filter client-side if region is specified
         query = """
         query ($encounterId: Int!, $page: Int!) {
           worldData {
@@ -157,7 +167,6 @@ def fetch_rankings(encounter_id, start_rank=1, end_rank=100):
           }
         }
         """
-
         variables = {
             "encounterId": encounter_id,
             "page": page
@@ -203,12 +212,14 @@ def fetch_rankings(encounter_id, start_rank=1, end_rank=100):
         page += 1
         print(f"Fetching additional page {page}...")
 
+        additional_vars = {
+            "encounterId": encounter_id,
+            "page": page
+        }
+
         response = requests.post(
             API_URL,
-            json={"query": query, "variables": {
-                "encounterId": encounter_id,
-                "page": page
-            }},
+            json={"query": query, "variables": additional_vars},
             headers=headers
         )
 
@@ -225,17 +236,72 @@ def fetch_rankings(encounter_id, start_rank=1, end_rank=100):
             else:
                 break
 
-    # Slice to get the desired rank range
-    # Calculate correct indices: all_rankings starts from first_rank_in_list, not rank 1
-    start_index = start_rank - first_rank_in_list
-    end_index = end_rank - first_rank_in_list + 1
+    # Filter by region if specified (client-side filtering for frozen zones)
+    if region:
+        print(f"Filtering rankings by region: {region}...")
+        # Keep fetching pages until we have enough region-filtered results
+        while has_more:
+            # Filter current results by region
+            region_filtered = [
+                r for r in all_rankings
+                if r.get("server", {}).get("region") == region
+            ]
+
+            # Check if we have enough results after filtering
+            if len(region_filtered) >= end_rank:
+                break
+
+            # Need more data, fetch next page
+            page += 1
+            print(f"  Need more {region} rankings, fetching page {page}...")
+
+            additional_vars = {
+                "encounterId": encounter_id,
+                "page": page
+            }
+
+            response = requests.post(
+                API_URL,
+                json={"query": query, "variables": additional_vars},
+                headers=headers
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                encounter_data = result.get("data", {}).get("worldData", {}).get("encounter")
+                rankings_json = encounter_data.get("characterRankings")
+
+                if rankings_json and isinstance(rankings_json, dict):
+                    rankings = rankings_json.get("rankings", [])
+                    all_rankings.extend(rankings)
+                    has_more = rankings_json.get("hasMorePages", False)
+                else:
+                    break
+            else:
+                break
+
+        # Final filter by region
+        all_rankings = [
+            r for r in all_rankings
+            if r.get("server", {}).get("region") == region
+        ]
+        print(f"  Found {len(all_rankings)} total {region} rankings")
+
+        # For region filtering, ranks are 1-indexed within the region
+        start_index = start_rank - 1
+        end_index = end_rank
+    else:
+        # No region filter - use original slicing logic
+        start_index = start_rank - first_rank_in_list
+        end_index = end_rank - first_rank_in_list + 1
+
     result = all_rankings[start_index:end_index]
 
-    # Add the actual rank to each ranking before filtering
+    # Add the actual rank to each ranking (region-specific rank if filtered)
     for i, ranking in enumerate(result):
         ranking['actual_rank'] = start_rank + i
 
-    # NOW filter out Anonymous players from the result
+    # Filter out Anonymous players from the result
     result = [r for r in result if r.get("name") != "Anonymous"]
 
     return result, encounter_name
@@ -411,23 +477,42 @@ def analyze_ranking(ranking, rank_number, encounter_name):
 
 def main():
     """Main execution function"""
-    if len(sys.argv) != 5:
-        print("Usage: python analyze_top_rankings.py <encounter_id> <start_rank> <end_rank> <output_file>")
-        print("\nExample:")
-        print("  python analyze_top_rankings.py 725 1 100 brutallus_top100.csv")
-        print("  python analyze_top_rankings.py 729 1 50 kiljaeden_top50.csv")
-        print("\nCommon Sunwell Plateau encounter IDs:")
-        print("  725 - Brutallus")
-        print("  726 - Felmyst")
-        print("  727 - The Eredar Twins")
-        print("  728 - M'uru")
-        print("  729 - Kil'jaeden")
-        return 1
+    import argparse
 
-    encounter_id = int(sys.argv[1])
-    start_rank = int(sys.argv[2])
-    end_rank = int(sys.argv[3])
-    output_file = sys.argv[4]
+    parser = argparse.ArgumentParser(
+        description="Analyze top rankings for Restoration Druids from WarcraftLogs",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Common Sunwell Plateau encounter IDs:
+  725 - Brutallus
+  726 - Felmyst
+  727 - The Eredar Twins
+  728 - M'uru
+  729 - Kil'jaeden
+
+Available regions: US, EU, KR, TW, CN
+
+Examples:
+  python analyze_top_rankings.py 725 1 100 brutallus_top100.csv
+  python analyze_top_rankings.py 725 1 100 brutallus_us.csv --region US
+  python analyze_top_rankings.py 729 1 50 kiljaeden_eu.csv --region EU
+        """
+    )
+
+    parser.add_argument("encounter_id", type=int, help="WarcraftLogs encounter ID")
+    parser.add_argument("start_rank", type=int, help="Starting rank (1-indexed)")
+    parser.add_argument("end_rank", type=int, help="Ending rank (inclusive)")
+    parser.add_argument("output_file", help="Output CSV file path")
+    parser.add_argument("--region", "-r", type=str, choices=["US", "EU", "KR", "TW", "CN"],
+                        help="Filter rankings by region (US, EU, KR, TW, CN)")
+
+    args = parser.parse_args()
+
+    encounter_id = args.encounter_id
+    start_rank = args.start_rank
+    end_rank = args.end_rank
+    output_file = args.output_file
+    region = args.region
 
     if start_rank < 1:
         print("Error: start_rank must be at least 1")
@@ -440,13 +525,16 @@ def main():
     print("=" * 80)
     print("WARCRAFTLOGS TOP RANKINGS ANALYSIS")
     print("=" * 80)
+    if region:
+        print(f"Region Filter: {region}")
     print()
 
     try:
         # Fetch rankings
-        print(f"Fetching rankings {start_rank}-{end_rank} for encounter {encounter_id}...")
-        rankings, encounter_name = fetch_rankings(encounter_id, start_rank, end_rank)
-        print(f"\n✓ Found {len(rankings)} rankings for {encounter_name}")
+        region_str = f" in {region}" if region else ""
+        print(f"Fetching rankings {start_rank}-{end_rank} for encounter {encounter_id}{region_str}...")
+        rankings, encounter_name = fetch_rankings(encounter_id, start_rank, end_rank, region)
+        print(f"\n✓ Found {len(rankings)} rankings for {encounter_name}{region_str}")
         print()
 
         # Prepare CSV
@@ -500,9 +588,16 @@ def main():
         current_delay = BASE_DELAY  # Start with base delay
 
         def save_progress():
-            """Sort and save all data to CSV"""
+            """Sort by HPS descending, recompute ranks, and save to CSV"""
             print(f"  💾 Saving progress... ({len(existing_data)} total entries)")
-            existing_data.sort(key=lambda x: int(x['Rank']))
+
+            # Sort by HPS descending (handle string/float conversion)
+            existing_data.sort(key=lambda x: float(x['HPS'] or 0), reverse=True)
+
+            # Recompute ranks based on HPS ordering
+            for i, row in enumerate(existing_data, start=1):
+                row['Rank'] = i
+
             with open(output_file, 'w', newline='', encoding='utf-8') as csvfile:
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writeheader()

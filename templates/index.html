@@ -834,7 +834,19 @@
         </div>
 
         <div class="controls">
-            <div class="controls-title">Filters</div>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                <div class="controls-title" style="margin-bottom: 0;">Filters</div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: #ddd; font-size: 0.9em;">
+                        <input type="radio" name="dataSource" value="best" checked onchange="loadData()">
+                        <span>Best report per player</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: #ddd; font-size: 0.9em;">
+                        <input type="radio" name="dataSource" value="all" onchange="loadData()">
+                        <span>All reports per player</span>
+                    </label>
+                </div>
+            </div>
             <p style="color: #8b9dc3; font-size: 0.9em; margin-bottom: 15px;">For descriptions of each variable in the dataset and a definition of Rotation, please see the Data Dictionary section below.</p>
             <div class="filter-grid">
                 <!-- Fight Settings Section -->
@@ -1574,6 +1586,7 @@
         // Load and update chart with all filtered data
         async function updateChart() {
             const dataset = document.getElementById('dataset').value;
+            const dataSource = document.querySelector('input[name="dataSource"]:checked').value;
             const totalHealers = document.getElementById('totalHealers').value;
             const shadowPriest = document.getElementById('shadowPriest').value;
             const innervates = document.getElementById('innervates').value;
@@ -1586,7 +1599,7 @@
             const regions = getSelectedRegions();
 
             // Build URL with all filters but request all data (use high limit)
-            let url = `/api/top/10000?dataset=${dataset}`;
+            let url = `/api/top/10000?dataset=${dataset}&dataSource=${dataSource}`;
             if (currentFilter !== null) {
                 url += `&naturesGrace=${currentFilter}`;
             }
@@ -1729,6 +1742,7 @@
         // Load and update Haste chart with all filtered data
         async function updateHasteChart() {
             const dataset = document.getElementById('dataset').value;
+            const dataSource = document.querySelector('input[name="dataSource"]:checked').value;
             const totalHealers = document.getElementById('totalHealers').value;
             const shadowPriest = document.getElementById('shadowPriest').value;
             const innervates = document.getElementById('innervates').value;
@@ -1741,7 +1755,7 @@
             const regions = getSelectedRegions();
 
             // Build URL with all filters but request all data (use high limit)
-            let url = `/api/top/10000?dataset=${dataset}`;
+            let url = `/api/top/10000?dataset=${dataset}&dataSource=${dataSource}`;
             if (currentFilter !== null) {
                 url += `&naturesGrace=${currentFilter}`;
             }
@@ -2001,6 +2015,7 @@
         // Load and update Rotation chart with average HPS by primary rotation
         async function updateRotationChart() {
             const dataset = document.getElementById('dataset').value;
+            const dataSource = document.querySelector('input[name="dataSource"]:checked').value;
             const totalHealers = document.getElementById('totalHealers').value;
             const shadowPriest = document.getElementById('shadowPriest').value;
             const innervates = document.getElementById('innervates').value;
@@ -2013,7 +2028,7 @@
             const regions = getSelectedRegions();
 
             // Build URL with all filters
-            let url = `/api/top/10000?dataset=${dataset}`;
+            let url = `/api/top/10000?dataset=${dataset}&dataSource=${dataSource}`;
             if (currentFilter !== null) {
                 url += `&naturesGrace=${currentFilter}`;
             }
@@ -2251,6 +2266,7 @@
         async function loadTopN() {
             const n = document.getElementById('topN').value || 20;
             const dataset = document.getElementById('dataset').value;
+            const dataSource = document.querySelector('input[name="dataSource"]:checked').value;
             const totalHealers = document.getElementById('totalHealers').value;
             const shadowPriest = document.getElementById('shadowPriest').value;
             const innervates = document.getElementById('innervates').value;
@@ -2263,7 +2279,7 @@
             const regions = getSelectedRegions();
 
             // Build URL with optional filters
-            let url = `/api/top/${n}?dataset=${dataset}`;
+            let url = `/api/top/${n}?dataset=${dataset}&dataSource=${dataSource}`;
             if (currentFilter !== null) {
                 url += `&naturesGrace=${currentFilter}`;
             }

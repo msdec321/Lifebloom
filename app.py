@@ -6,15 +6,33 @@ from analyze_druid import analyze_druid_performance
 
 app = Flask(__name__)
 
-# Available datasets
-DATASETS = {
+# Available datasets - best report per player
+DATASETS_BEST = {
     'brutallus': 'data/t6/brutallus.csv',
     'felmyst': 'data/t6/felmyst.csv'
 }
 
-def load_data(dataset='brutallus'):
-    """Load and return the specified dataset"""
-    data_path = DATASETS.get(dataset)
+# Available datasets - all reports per player
+DATASETS_ALL = {
+    'brutallus': 'data/t6/brutallus_all_reports.csv',
+    'felmyst': 'data/t6/felmyst_all_reports.csv'
+}
+
+def load_data(dataset='brutallus', data_source='best'):
+    """Load and return the specified dataset
+
+    Args:
+        dataset: The boss/encounter name (e.g., 'brutallus', 'felmyst')
+        data_source: 'best' for best report per player, 'all' for all reports
+    """
+    # Select the appropriate dataset dictionary
+    datasets = DATASETS_ALL if data_source == 'all' else DATASETS_BEST
+    data_path = datasets.get(dataset)
+
+    # Fallback to best if all reports file doesn't exist
+    if data_source == 'all' and (not data_path or not os.path.exists(data_path)):
+        data_path = DATASETS_BEST.get(dataset)
+
     if data_path and os.path.exists(data_path):
         df = pd.read_csv(data_path)
         # Convert numeric columns to appropriate types
@@ -34,7 +52,8 @@ def index():
 def get_data():
     """API endpoint to get the full dataset"""
     dataset = request.args.get('dataset', 'brutallus')
-    df = load_data(dataset)
+    data_source = request.args.get('dataSource', 'best')
+    df = load_data(dataset, data_source)
     if df is not None:
         # Replace NaN with None for proper JSON serialization
         return jsonify(df.where(pd.notna(df), None).to_dict(orient='records'))
@@ -44,7 +63,8 @@ def get_data():
 def get_stats():
     """API endpoint to get summary statistics"""
     dataset = request.args.get('dataset', 'brutallus')
-    df = load_data(dataset)
+    data_source = request.args.get('dataSource', 'best')
+    df = load_data(dataset, data_source)
     if df is None:
         return jsonify({'error': 'Data not found'}), 404
 
@@ -64,6 +84,7 @@ def get_stats():
 def get_top_n(n):
     """API endpoint to get top N healers by HPS"""
     dataset = request.args.get('dataset', 'brutallus')
+    data_source = request.args.get('dataSource', 'best')
     natures_grace_filter = request.args.get('naturesGrace', None)
     total_healers_filter = request.args.get('totalHealers', None)
     vampiric_touch_filter = request.args.get('vampiricTouch', None)
@@ -76,7 +97,7 @@ def get_top_n(n):
     n_shaman_filter = request.args.get('nShaman', None)
     regions_filter = request.args.get('regions', None)
 
-    df = load_data(dataset)
+    df = load_data(dataset, data_source)
     if df is None:
         return jsonify({'error': 'Data not found'}), 404
 
