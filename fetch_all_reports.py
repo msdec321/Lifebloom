@@ -6,10 +6,11 @@ Takes a comparison CSV file containing players' "best" reports and fetches
 all of their reports for the same encounter.
 
 Usage:
-    python fetch_all_reports.py <encounter_id> <comparison_file> <output_file>
+    python fetch_all_reports.py <encounter_id> <comparison_file> <output_file> [--phase N]
 
-Example:
+Examples:
     python fetch_all_reports.py 725 data/t6/brutallus.csv data/t6/brutallus_all_reports.csv
+    python fetch_all_reports.py 727 data/t6/eredar_twins_p1.csv data/t6/eredar_twins_p1_all_reports.csv --phase 1
 """
 
 import sys
@@ -287,13 +288,15 @@ def main():
         description="Fetch all reports for players from a comparison CSV",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Example:
+Examples:
     python fetch_all_reports.py 725 data/t6/brutallus.csv data/t6/brutallus_all_reports.csv
+    python fetch_all_reports.py 727 data/t6/eredar_twins_p1.csv data/t6/eredar_twins_p1_all_reports.csv --phase 1
+    python fetch_all_reports.py 727 data/t6/eredar_twins_p2.csv data/t6/eredar_twins_p2_all_reports.csv -p 2
 
 Common Sunwell Plateau encounter IDs:
     725 - Brutallus
     726 - Felmyst
-    727 - The Eredar Twins
+    727 - The Eredar Twins (use --phase 1 or --phase 2)
     728 - M'uru
     729 - Kil'jaeden
         """
@@ -302,6 +305,8 @@ Common Sunwell Plateau encounter IDs:
     parser.add_argument("encounter_id", type=int, help="WarcraftLogs encounter ID")
     parser.add_argument("comparison_file", help="Input CSV with players' best reports")
     parser.add_argument("output_file", help="Output CSV for all reports")
+    parser.add_argument("--phase", "-p", type=int, choices=[1, 2],
+                        help="Phase number for multi-phase encounters (e.g., Eredar Twins)")
     parser.add_argument("--limit", "-l", type=int, default=None,
                         help="Limit number of players to process (for testing)")
 
@@ -310,6 +315,7 @@ Common Sunwell Plateau encounter IDs:
     encounter_id = args.encounter_id
     comparison_file = args.comparison_file
     output_file = args.output_file
+    phase = args.phase
     player_limit = args.limit
 
     # Validate comparison file exists
@@ -321,6 +327,8 @@ Common Sunwell Plateau encounter IDs:
     print("FETCH ALL REPORTS FOR PLAYERS")
     print("=" * 80)
     print(f"Encounter ID: {encounter_id}")
+    if phase:
+        print(f"Phase: {phase}")
     print(f"Comparison file: {comparison_file}")
     print(f"Output file: {output_file}")
     print()
@@ -441,7 +449,7 @@ Common Sunwell Plateau encounter IDs:
 
             try:
                 time.sleep(BASE_DELAY)
-                data = analyze_druid_performance(report_code, encounter_name, player_name)
+                data = analyze_druid_performance(report_code, encounter_name, player_name, phase)
 
                 # Extract stats
                 stats = data['player_stats']

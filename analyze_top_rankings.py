@@ -172,11 +172,22 @@ def fetch_rankings(encounter_id, start_rank=1, end_rank=100, region=None):
             "page": page
         }
 
-        response = requests.post(
-            API_URL,
-            json={"query": query, "variables": variables},
-            headers=headers
-        )
+        try:
+            response = requests.post(
+                API_URL,
+                json={"query": query, "variables": variables},
+                headers=headers,
+                timeout=30  # 30 second timeout
+            )
+        except requests.exceptions.Timeout:
+            print(f"  ⚠️ Request timed out, retrying page {page}...")
+            time.sleep(5)
+            response = requests.post(
+                API_URL,
+                json={"query": query, "variables": variables},
+                headers=headers,
+                timeout=60  # Longer timeout on retry
+            )
 
         if response.status_code != 200:
             raise Exception(f"Query failed: {response.status_code} - {response.text}")
@@ -217,11 +228,16 @@ def fetch_rankings(encounter_id, start_rank=1, end_rank=100, region=None):
             "page": page
         }
 
-        response = requests.post(
-            API_URL,
-            json={"query": query, "variables": additional_vars},
-            headers=headers
-        )
+        try:
+            response = requests.post(
+                API_URL,
+                json={"query": query, "variables": additional_vars},
+                headers=headers,
+                timeout=30
+            )
+        except requests.exceptions.Timeout:
+            print(f"  ⚠️ Request timed out on page {page}, skipping...")
+            break
 
         if response.status_code == 200:
             result = response.json()
