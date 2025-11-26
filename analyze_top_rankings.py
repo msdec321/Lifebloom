@@ -307,9 +307,15 @@ def fetch_rankings(encounter_id, start_rank=1, end_rank=100, region=None):
     return result, encounter_name
 
 
-def analyze_ranking(ranking, rank_number, encounter_name):
+def analyze_ranking(ranking, rank_number, encounter_name, phase=None):
     """
     Analyze a single ranking entry and return CSV row data.
+
+    Args:
+        ranking: The ranking data from WarcraftLogs API
+        rank_number: The rank number for this entry
+        encounter_name: Name of the boss encounter
+        phase: Optional phase number for multi-phase encounters (e.g., Eredar Twins)
 
     Returns: dict with all CSV columns
     """
@@ -323,11 +329,12 @@ def analyze_ranking(ranking, rank_number, encounter_name):
     server_name = server_info.get("name", "Unknown")
     server_region = server_info.get("region", "Unknown")
 
-    print(f"  Analyzing Rank #{rank_number}: {player_name} (Report: {report_code}, Fight: {fight_id})")
+    phase_str = f", Phase: {phase}" if phase else ""
+    print(f"  Analyzing Rank #{rank_number}: {player_name} (Report: {report_code}, Fight: {fight_id}{phase_str})")
 
     try:
         # Run the full analysis
-        data = analyze_druid_performance(report_code, encounter_name, player_name)
+        data = analyze_druid_performance(report_code, encounter_name, player_name, phase)
 
         # Extract date and duration
         encounter_date = datetime.fromtimestamp(data['timestamp'] / 1000)
@@ -496,6 +503,7 @@ Examples:
   python analyze_top_rankings.py 725 1 100 brutallus_top100.csv
   python analyze_top_rankings.py 725 1 100 brutallus_us.csv --region US
   python analyze_top_rankings.py 729 1 50 kiljaeden_eu.csv --region EU
+  python analyze_top_rankings.py 727 1 100 eredar_twins_p1.csv --phase 1
         """
     )
 
@@ -505,6 +513,8 @@ Examples:
     parser.add_argument("output_file", help="Output CSV file path")
     parser.add_argument("--region", "-r", type=str, choices=["US", "EU", "KR", "TW", "CN"],
                         help="Filter rankings by region (US, EU, KR, TW, CN)")
+    parser.add_argument("--phase", "-p", type=int, choices=[1, 2],
+                        help="Phase number for multi-phase encounters (e.g., Eredar Twins: 1 or 2)")
 
     args = parser.parse_args()
 
@@ -513,6 +523,7 @@ Examples:
     end_rank = args.end_rank
     output_file = args.output_file
     region = args.region
+    phase = args.phase
 
     if start_rank < 1:
         print("Error: start_rank must be at least 1")
@@ -527,14 +538,17 @@ Examples:
     print("=" * 80)
     if region:
         print(f"Region Filter: {region}")
+    if phase:
+        print(f"Phase Filter: {phase}")
     print()
 
     try:
         # Fetch rankings
         region_str = f" in {region}" if region else ""
+        phase_str = f" (Phase {phase})" if phase else ""
         print(f"Fetching rankings {start_rank}-{end_rank} for encounter {encounter_id}{region_str}...")
         rankings, encounter_name = fetch_rankings(encounter_id, start_rank, end_rank, region)
-        print(f"\n✓ Found {len(rankings)} rankings for {encounter_name}{region_str}")
+        print(f"\n✓ Found {len(rankings)} rankings for {encounter_name}{phase_str}{region_str}")
         print()
 
         # Prepare CSV
@@ -618,7 +632,7 @@ Examples:
                 continue
 
             # Analyze new player
-            row_data = analyze_ranking(ranking, rank_number, encounter_name)
+            row_data = analyze_ranking(ranking, rank_number, encounter_name, phase)
             existing_data.append(row_data)
             existing_report_ids.add(report_code)  # Add to set to prevent duplicates in same run
             new_count += 1

@@ -54,6 +54,11 @@ HASTE_RATING_DIVISOR = 1577  # TBC haste rating conversion
 DEFAULT_ROTATION_TIMEOUT = 5.5  # fallback: 7.0 - 1.5 (0 haste GCD)
 CASTS_BETWEEN_SEPARATORS = 5
 
+# Eredar Twins gameIDs (constant across all reports)
+LADY_SACROLASH_GAME_ID = 25165
+GRAND_WARLOCK_ALYTHESS_GAME_ID = 25166
+EREDAR_TWINS_ENCOUNTER_ID = 727
+
 
 def calculate_gcd(haste_rating):
     """
@@ -87,6 +92,308 @@ def calculate_rotation_timeout(haste_rating):
     """
     gcd = calculate_gcd(haste_rating)
     return LIFEBLOOM_DURATION - gcd
+
+
+def detect_eredar_twins_phases(report_code, fight_id, fight_start_time, all_actors, headers):
+    """
+    Detect phase boundaries for Eredar Twins encounter.
+
+    Phase 1: Lady Sacrolash is active (taking damage)
+    Phase 2: Only Grand Warlock Alythess remains (after Sacrolash stops taking damage)
+
+    Args:
+        report_code: The report code
+        fight_id: The fight ID
+        fight_start_time: The absolute start time of the fight (from report)
+        all_actors: List of all actors from report masterData
+        headers: API request headers
+
+    Returns:
+        Dictionary with phase information:
+        {
+            'has_phases': bool,
+            'phase1_end_ms': int,  # Relative to fight start (0-based)
+            'phase2_start_ms': int  # Relative to fight start (0-based)
+        }
+    """
+    print("Detecting Eredar Twins phase boundaries...")
+
+    # Find Lady Sacrolash's actor ID by gameID
+    sacrolash_actor_id = None
+    for actor in all_actors:
+        if actor.get("gameID") == LADY_SACROLASH_GAME_ID:
+            sacrolash_actor_id = actor.get("id")
+            break
+
+    if sacrolash_actor_id is None:
+        print("  ⚠ Could not find Lady Sacrolash in report actors")
+        return {'has_phases': False}
+
+    query = f"""
+    query {{
+      reportData {{
+        report(code: "{report_code}") {{
+          events(
+            fightIDs: {[fight_id]}
+            dataType: DamageTaken
+            targetID: {sacrolash_actor_id}
+            limit: 10000
+          ) {{
+            data
+          }}
+        }}
+      }}
+    }}
+    """
+
+    response = api_request_with_retry(
+        query=query,
+        headers=headers,
+        query_description="Detect phases"
+    )
+
+    if not response or response.status_code != 200:
+        print("  ⚠ Could not detect phases, treating as single-phase fight")
+        return {'has_phases': False}
+
+    result = response.json()
+    sacrolash_events = result.get("data", {}).get("reportData", {}).get("report", {}).get("events", {}).get("data", [])
+
+    if not sacrolash_events:
+        print("  ⚠ No damage events found for Lady Sacrolash")
+        return {'has_phases': False}
+
+    # Phase 1 ends when Lady Sacrolash stops taking damage
+    # Get the timestamp of her last damage event (absolute timestamp)
+    last_damage_event = sacrolash_events[-1]
+    last_damage_absolute = last_damage_event.get("timestamp")
+
+    # Convert to fight-relative timestamp (0-based)
+    phase1_end_relative = last_damage_absolute - fight_start_time
+
+    print(f"✓ Phase 1 ends at {phase1_end_relative}ms (fight-relative, 0-based)")
+
+    return {
+        'has_phases': True,
+        'phase1_end_ms': phase1_end_relative,
+        'phase2_start_ms': phase1_end_relative
+    }
+
+
+def detect_eredar_twins_phase1_tanks(report_code, fight_id, api_start_time, api_end_time, all_actors, actor_names, player_ids, headers):
+    """
+    Detect tanks for Eredar Twins Phase 1 based on damage taken from bosses.
+
+    Phase 1 has special tank mechanics with potentially 3 active tanks:
+    - 1 tank on Grand Warlock Alythess (player who took most damage from her)
+    - 2 tanks on Lady Sacrolash (two players who took most damage from her)
+
+    Args:
+        report_code: The report code
+        fight_id: The fight ID
+        api_start_time: Start time for queries (report-relative)
+        api_end_time: End time for queries (report-relative)
+        all_actors: List of all actors from report masterData
+        actor_names: Dict mapping actor IDs to names
+        player_ids: Set of player actor IDs
+        headers: API request headers
+
+    Returns:
+        Tuple of (tanks list, tank_ids set) where tanks is a list of dicts with 'name' and 'id'
+    """
+    from collections import defaultdict
+
+    print("Detecting Eredar Twins Phase 1 tanks based on boss damage...")
+
+    # Find boss actor IDs by gameID (actor IDs are report-specific)
+    alythess_actor_id = None
+    sacrolash_actor_id = None
+    for actor in all_actors:
+        game_id = actor.get("gameID")
+        if game_id == GRAND_WARLOCK_ALYTHESS_GAME_ID:
+            alythess_actor_id = actor.get("id")
+        elif game_id == LADY_SACROLASH_GAME_ID:
+            sacrolash_actor_id = actor.get("id")
+
+    if alythess_actor_id is None or sacrolash_actor_id is None:
+        print("  ⚠ Could not find Eredar Twins bosses in report actors")
+        return [], set()
+
+    # Query all damage taken events and filter by boss sourceID
+    # Note: The sourceID filter doesn't work reliably in the API, so we fetch all events and filter
+    query = f"""
+    query {{
+      reportData {{
+        report(code: "{report_code}") {{
+          events(
+            fightIDs: [{fight_id}]
+            dataType: DamageTaken
+            startTime: {api_start_time}
+            endTime: {api_end_time}
+            limit: 10000
+          ) {{
+            data
+          }}
+        }}
+      }}
+    }}
+    """
+
+    response = api_request_with_retry(
+        query=query,
+        headers=headers,
+        query_description="Detect Eredar Twins tanks"
+    )
+
+    if not response or response.status_code != 200:
+        print("  ⚠ Could not detect Eredar Twins tanks, falling back to default")
+        return [], set()
+
+    result = response.json()
+    all_damage_events = result.get("data", {}).get("reportData", {}).get("report", {}).get("events", {}).get("data", [])
+
+    # Filter events by boss source (using dynamically looked up actor IDs)
+    alythess_events = [e for e in all_damage_events if e.get("sourceID") == alythess_actor_id]
+    sacrolash_events = [e for e in all_damage_events if e.get("sourceID") == sacrolash_actor_id]
+
+    # Sum damage taken by each player from Alythess
+    alythess_damage_by_player = defaultdict(int)
+    for event in alythess_events:
+        target_id = event.get("targetID")
+        if target_id in player_ids:
+            damage = event.get("amount", 0) + event.get("absorbed", 0)
+            alythess_damage_by_player[target_id] += damage
+
+    # Sum damage taken by each player from Sacrolash
+    sacrolash_damage_by_player = defaultdict(int)
+    for event in sacrolash_events:
+        target_id = event.get("targetID")
+        if target_id in player_ids:
+            damage = event.get("amount", 0) + event.get("absorbed", 0)
+            sacrolash_damage_by_player[target_id] += damage
+
+    tanks = []
+    tank_ids = set()
+
+    # Get top 1 player damaged by Alythess
+    if alythess_damage_by_player:
+        sorted_alythess = sorted(alythess_damage_by_player.items(), key=lambda x: x[1], reverse=True)
+        top_alythess_id = sorted_alythess[0][0]
+        top_alythess_name = actor_names.get(top_alythess_id, "Unknown")
+        top_alythess_damage = sorted_alythess[0][1]
+        tanks.append({"name": top_alythess_name, "id": top_alythess_id, "boss": "Alythess"})
+        tank_ids.add(top_alythess_id)
+        print(f"  • Alythess tank: {top_alythess_name} ({top_alythess_damage:,} damage taken)")
+
+    # Get top 2 players damaged by Sacrolash
+    if sacrolash_damage_by_player:
+        sorted_sacrolash = sorted(sacrolash_damage_by_player.items(), key=lambda x: x[1], reverse=True)
+        for i, (player_id, damage) in enumerate(sorted_sacrolash[:2]):
+            player_name = actor_names.get(player_id, "Unknown")
+            tanks.append({"name": player_name, "id": player_id, "boss": "Sacrolash"})
+            tank_ids.add(player_id)
+            print(f"  • Sacrolash tank {i+1}: {player_name} ({damage:,} damage taken)")
+
+    print(f"✓ Identified {len(tanks)} Eredar Twins Phase 1 tanks")
+
+    return tanks, tank_ids
+
+
+def detect_eredar_twins_phase2_tanks(report_code, fight_id, api_start_time, api_end_time, all_actors, actor_names, player_ids, headers):
+    """
+    Detect tank for Eredar Twins Phase 2 based on damage taken from Alythess.
+
+    Phase 2 has only one tank - the player who took the most damage from
+    Grand Warlock Alythess (Sacrolash is dead in Phase 2).
+
+    Args:
+        report_code: The report code
+        fight_id: The fight ID
+        api_start_time: Start time for queries (report-relative)
+        api_end_time: End time for queries (report-relative)
+        all_actors: List of all actors from report masterData
+        actor_names: Dict mapping actor IDs to names
+        player_ids: Set of player actor IDs
+        headers: API request headers
+
+    Returns:
+        Tuple of (tanks list, tank_ids set) where tanks is a list of dicts with 'name' and 'id'
+    """
+    from collections import defaultdict
+
+    print("Detecting Eredar Twins Phase 2 tank based on Alythess damage...")
+
+    # Find Alythess actor ID by gameID (actor IDs are report-specific)
+    alythess_actor_id = None
+    for actor in all_actors:
+        game_id = actor.get("gameID")
+        if game_id == GRAND_WARLOCK_ALYTHESS_GAME_ID:
+            alythess_actor_id = actor.get("id")
+            break
+
+    if alythess_actor_id is None:
+        print("  ⚠ Could not find Grand Warlock Alythess in report actors")
+        return [], set()
+
+    # Query all damage taken events and filter by Alythess sourceID
+    query = f"""
+    query {{
+      reportData {{
+        report(code: "{report_code}") {{
+          events(
+            fightIDs: [{fight_id}]
+            dataType: DamageTaken
+            startTime: {api_start_time}
+            endTime: {api_end_time}
+            limit: 10000
+          ) {{
+            data
+          }}
+        }}
+      }}
+    }}
+    """
+
+    response = api_request_with_retry(
+        query=query,
+        headers=headers,
+        query_description="Detect Eredar Twins Phase 2 tank"
+    )
+
+    if not response or response.status_code != 200:
+        print("  ⚠ Could not detect Eredar Twins tank, falling back to default")
+        return [], set()
+
+    result = response.json()
+    all_damage_events = result.get("data", {}).get("reportData", {}).get("report", {}).get("events", {}).get("data", [])
+
+    # Filter events to only those from Alythess
+    alythess_events = [e for e in all_damage_events if e.get("sourceID") == alythess_actor_id]
+
+    # Sum damage taken by each player from Alythess
+    alythess_damage_by_player = defaultdict(int)
+    for event in alythess_events:
+        target_id = event.get("targetID")
+        if target_id in player_ids:
+            damage = event.get("amount", 0) + event.get("absorbed", 0)
+            alythess_damage_by_player[target_id] += damage
+
+    tanks = []
+    tank_ids = set()
+
+    # Get the player who took the most damage from Alythess
+    if alythess_damage_by_player:
+        sorted_alythess = sorted(alythess_damage_by_player.items(), key=lambda x: x[1], reverse=True)
+        top_player_id = sorted_alythess[0][0]
+        top_player_name = actor_names.get(top_player_id, "Unknown")
+        top_player_damage = sorted_alythess[0][1]
+        tanks.append({"name": top_player_name, "id": top_player_id})
+        tank_ids.add(top_player_id)
+        print(f"  • Tank: {top_player_name} ({top_player_damage:,} damage taken from Alythess)")
+
+    print(f"✓ Identified {len(tanks)} Eredar Twins Phase 2 tank")
+
+    return tanks, tank_ids
 
 
 def api_request_with_retry(query, variables=None, headers=None, query_description="API query"):
@@ -166,7 +473,7 @@ def api_request_with_retry(query, variables=None, headers=None, query_descriptio
     return None
 
 
-def analyze_druid_performance(report_code, boss_name, player_name):
+def analyze_druid_performance(report_code, boss_name, player_name, phase=None):
     """
     Comprehensive analysis combining performance metrics and rotation data.
 
@@ -174,6 +481,7 @@ def analyze_druid_performance(report_code, boss_name, player_name):
         report_code: The report code/ID
         boss_name: The name of the boss
         player_name: The name of the Restoration Druid to analyze
+        phase: Optional phase number (1 or 2) for multi-phase encounters like Eredar Twins
 
     Returns:
         Dictionary containing all performance and rotation data
@@ -184,7 +492,8 @@ def analyze_druid_performance(report_code, boss_name, player_name):
         "Content-Type": "application/json"
     }
 
-    print(f"Searching for {boss_name} in report {report_code}...")
+    phase_str = f" (Phase {phase})" if phase else ""
+    print(f"Searching for {boss_name}{phase_str} in report {report_code}...")
 
     # ===== STEP 1: Get fight and player information =====
     fights_query = """
@@ -287,6 +596,40 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     fight_absolute_timestamp = report_start_time + fight_start_time
 
     print(f"✓ Found {boss_name} (Fight ID: {fight_id}, {'KILL' if is_kill else 'WIPE'})")
+
+    # ===== STEP 1.5: Detect phases if Eredar Twins and phase specified =====
+    phase_info = None
+    query_start_time = fight_start_time
+    query_end_time = fight_end_time
+    encounter_id = target_fight.get("encounterID")
+
+    if encounter_id == EREDAR_TWINS_ENCOUNTER_ID and phase:
+        phase_info = detect_eredar_twins_phases(report_code, fight_id, fight_start_time, all_actors, headers)
+
+        if phase_info.get('has_phases'):
+            if phase == 1:
+                # Phase 1: From start to when Sacrolash dies
+                query_start_time = fight_start_time
+                query_end_time = fight_start_time + phase_info['phase1_end_ms']
+                print(f"✓ Analyzing Phase 1 only (0ms to {phase_info['phase1_end_ms']}ms)")
+            elif phase == 2:
+                # Phase 2: From Sacrolash death to end
+                query_start_time = fight_start_time + phase_info['phase2_start_ms']
+                query_end_time = fight_end_time
+                print(f"✓ Analyzing Phase 2 only ({phase_info['phase2_start_ms']}ms to {fight_end_time - fight_start_time}ms)")
+
+            # Recalculate fight duration for the phase
+            fight_duration_ms = query_end_time - query_start_time
+            fight_duration_seconds = fight_duration_ms / 1000
+            duration_minutes = int(fight_duration_seconds // 60)
+            duration_seconds = int(fight_duration_seconds % 60)
+        else:
+            print(f"⚠ Phase detection failed, analyzing full fight")
+
+    # Time ranges for API queries (report-relative timestamps)
+    # Note: WarcraftLogs events API expects report-relative timestamps, not fight-relative
+    api_start_time = query_start_time
+    api_end_time = query_end_time
 
     # ===== STEP 2: Get healing composition and player details =====
     print("Querying healing composition and player details...")
@@ -433,7 +776,7 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     query {{
       reportData {{
         report(code: "{report_code}") {{
-          events(fightIDs: {[fight_id]}, dataType: Buffs, limit: 10000) {{
+          events(fightIDs: {[fight_id]}, dataType: Buffs, startTime: {api_start_time}, endTime: {api_end_time}, limit: 10000) {{
             data
           }}
         }}
@@ -483,7 +826,7 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     query {{
       reportData {{
         report(code: "{report_code}") {{
-          events(fightIDs: {[fight_id]}, dataType: Resources, targetID: {player_id}, limit: 500) {{
+          events(fightIDs: {[fight_id]}, dataType: Resources, targetID: {player_id}, startTime: {api_start_time}, endTime: {api_end_time}, limit: 500) {{
             data
           }}
         }}
@@ -514,7 +857,7 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     query {{
       reportData {{
         report(code: "{report_code}") {{
-          events(fightIDs: {[fight_id]}, dataType: Buffs, sourceID: {player_id}, abilityID: {LIFEBLOOM_ID}, limit: 10000) {{
+          events(fightIDs: {[fight_id]}, dataType: Buffs, sourceID: {player_id}, abilityID: {LIFEBLOOM_ID}, startTime: {api_start_time}, endTime: {api_end_time}, limit: 10000) {{
             data
           }}
         }}
@@ -551,7 +894,7 @@ def analyze_druid_performance(report_code, boss_name, player_name):
                     del active_instances[target_id]
 
         for target_id, apply_time in active_instances.items():
-            intervals.append((apply_time, fight_end_time))
+            intervals.append((apply_time, query_end_time))
 
         if intervals:
             intervals.sort()
@@ -575,7 +918,7 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     query {{
       reportData {{
         report(code: "{report_code}") {{
-          table(fightIDs: {[fight_id]}, dataType: Healing, sourceID: {player_id})
+          table(fightIDs: {[fight_id]}, dataType: Healing, sourceID: {player_id}, startTime: {api_start_time}, endTime: {api_end_time})
         }}
       }}
     }}
@@ -591,6 +934,7 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     rejuvenation_hps = 0
     regrowth_total_hps = 0
     regrowth_by_rank = {}
+    phase_hps = 0  # Phase-specific HPS calculated from filtered healing data
 
     if response and response.status_code == 200:
         result = response.json()
@@ -619,6 +963,10 @@ def analyze_druid_performance(report_code, boss_name, player_name):
                 if (entry.get("abilityGameID") or entry.get("guid")) in REGROWTH_IDS
             )
             regrowth_total_hps = (total_regrowth_healing / fight_duration_seconds) if fight_duration_seconds > 0 else 0
+
+            # Calculate total healing for phase-specific HPS
+            total_phase_healing = sum(entry.get("total", 0) for entry in entries)
+            phase_hps = (total_phase_healing / fight_duration_seconds) if fight_duration_seconds > 0 else 0
 
     # ===== STEP 6: Get rankings =====
     print("Querying rankings...")
@@ -655,7 +1003,8 @@ def analyze_druid_performance(report_code, boss_name, player_name):
                                 "rank": rank,
                                 "rankPercent": rank_percent,
                                 "totalParses": total_parses,
-                                "hps": hps,
+                                "hps": phase_hps,  # Use phase-specific HPS instead of full-fight HPS
+                                "hps_full_fight": hps,  # Keep full-fight HPS for reference
                                 "server": server_name,
                                 "region": server_region
                             }
@@ -668,7 +1017,7 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     query {{
       reportData {{
         report(code: "{report_code}") {{
-          table(fightIDs: {[fight_id]}, dataType: DamageTaken)
+          table(fightIDs: {[fight_id]}, dataType: DamageTaken, startTime: {api_start_time}, endTime: {api_end_time})
         }}
       }}
     }}
@@ -702,42 +1051,56 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     print(f"✓ Total raid damage taken: {total_raid_damage_taken:,} ({raid_damage_taken_per_second:.2f} per second)")
 
     # ===== STEP 8: Identify tanks =====
-    print("Identifying tanks...")
-
-    combatant_query = f"""
-    query {{
-      reportData {{
-        report(code: "{report_code}") {{
-          playerDetails(fightIDs: {[fight_id]})
-        }}
-      }}
-    }}
-    """
-
-    response = api_request_with_retry(
-        query=combatant_query,
-        headers=headers,
-        query_description="Fetch player details"
-    )
-
     tanks = []
     tank_ids = set()
 
-    if response and response.status_code == 200:
-        result = response.json()
-        player_details_data = result.get("data", {}).get("reportData", {}).get("report", {}).get("playerDetails", {})
-        player_details = player_details_data.get("data", {}).get("playerDetails", {}) if isinstance(player_details_data, dict) else {}
+    # Use special tank detection for Eredar Twins Phase 1
+    if encounter_id == EREDAR_TWINS_ENCOUNTER_ID and phase == 1:
+        tanks, tank_ids = detect_eredar_twins_phase1_tanks(
+            report_code, fight_id, api_start_time, api_end_time,
+            all_actors, actor_names, player_ids, headers
+        )
+    # Use special tank detection for Eredar Twins Phase 2
+    elif encounter_id == EREDAR_TWINS_ENCOUNTER_ID and phase == 2:
+        tanks, tank_ids = detect_eredar_twins_phase2_tanks(
+            report_code, fight_id, api_start_time, api_end_time,
+            all_actors, actor_names, player_ids, headers
+        )
+    else:
+        # Default tank detection from playerDetails
+        print("Identifying tanks...")
 
-        if isinstance(player_details, dict):
-            tanks_list = player_details.get("tanks", [])
-            if tanks_list:
-                for tank in tanks_list:
-                    tank_name = tank.get("name", "Unknown")
-                    tank_id = tank.get("id")
-                    tanks.append({"name": tank_name, "id": tank_id})
-                    tank_ids.add(tank_id)
+        combatant_query = f"""
+        query {{
+          reportData {{
+            report(code: "{report_code}") {{
+              playerDetails(fightIDs: {[fight_id]})
+            }}
+          }}
+        }}
+        """
 
-    print(f"✓ Identified {len(tanks)} tanks")
+        response = api_request_with_retry(
+            query=combatant_query,
+            headers=headers,
+            query_description="Fetch player details"
+        )
+
+        if response and response.status_code == 200:
+            result = response.json()
+            player_details_data = result.get("data", {}).get("reportData", {}).get("report", {}).get("playerDetails", {})
+            player_details = player_details_data.get("data", {}).get("playerDetails", {}) if isinstance(player_details_data, dict) else {}
+
+            if isinstance(player_details, dict):
+                tanks_list = player_details.get("tanks", [])
+                if tanks_list:
+                    for tank in tanks_list:
+                        tank_name = tank.get("name", "Unknown")
+                        tank_id = tank.get("id")
+                        tanks.append({"name": tank_name, "id": tank_id})
+                        tank_ids.add(tank_id)
+
+        print(f"✓ Identified {len(tanks)} tanks")
 
     # ===== STEP 9: Build tank timeline from damage events =====
     print("Building tank timeline from boss melee swings...")
@@ -746,7 +1109,7 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     query {{
       reportData {{
         report(code: "{report_code}") {{
-          events(fightIDs: {[fight_id]}, dataType: DamageTaken, limit: 10000) {{
+          events(fightIDs: {[fight_id]}, dataType: DamageTaken, startTime: {api_start_time}, endTime: {api_end_time}, limit: 10000) {{
             data
           }}
         }}
@@ -787,7 +1150,7 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     query {{
       reportData {{
         report(code: "{report_code}") {{
-          events(fightIDs: {[fight_id]}, dataType: Casts, sourceID: {player_id}, limit: 10000) {{
+          events(fightIDs: {[fight_id]}, dataType: Casts, sourceID: {player_id}, startTime: {api_start_time}, endTime: {api_end_time}, limit: 10000) {{
             data
           }}
         }}
@@ -859,6 +1222,13 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     cast_data = []
     rotation_count = 0
 
+    # Check if this is Eredar Twins Phase 1 (special rotation logic)
+    is_eredar_twins_p1 = (encounter_id == EREDAR_TWINS_ENCOUNTER_ID and phase == 1)
+
+    # For Eredar Twins P1: track rotation state
+    current_rotation_target_id = None  # The tank that started the current rotation
+    current_rotation_start_time = None  # When the current rotation started
+
     for event in cast_events:
         timestamp = event.get("timestamp", 0)
         ability_id = event.get("abilityGameID", "?")
@@ -878,29 +1248,78 @@ def analyze_druid_performance(report_code, boss_name, player_name):
             continue
         if "Hopped Up" in ability_name:
             continue
+        if "Essence of the Martyr" in ability_name:
+            continue
         if "Rebirth" in ability_name and target_name != "Environment":
             continue
         active_tank_name, active_tank_id = get_active_tank_at_time(timestamp, tank_timeline)
-        relative_time = (timestamp - fight_start_time) / 1000.0
+        relative_time = (timestamp - query_start_time) / 1000.0
 
-        is_rotation_start = (
-            ability_id == LIFEBLOOM_ID and
-            event_type == "cast" and
-            target_id == active_tank_id and
-            active_tank_id is not None
-        )
-
-        is_instant_cast = (
-            (ability_id == LIFEBLOOM_ID and event_type == "cast" and target_id != active_tank_id) or
-            (ability_id == REJUVENATION_ID and event_type == "cast") or
-            (ability_id == TREE_OF_LIFE_ID and event_type == "cast") or
-            (ability_id == SWIFTMEND_ID and event_type == "cast") or
-            (ability_id == NATURES_SWIFTNESS_ID and event_type == "cast") or
-            (ability_id == INNERVATE_ID and event_type == "cast")
-        )
+        is_rotation_start = False
+        is_lifebloom_tank = False
+        is_instant_cast = False
+        is_regrowth = False
 
         # Treat Rebirth on Environment as Regrowth (likely a cancelled Regrowth cast)
-        is_regrowth = "Regrowth" in ability_name or ("Rebirth" in ability_name and target_name == "Environment")
+        if "Regrowth" in ability_name or ("Rebirth" in ability_name and target_name == "Environment"):
+            is_regrowth = True
+
+        elif is_eredar_twins_p1:
+            # Eredar Twins Phase 1: Special rotation logic with multiple tanks
+            is_lifebloom_on_tank = (
+                ability_id == LIFEBLOOM_ID and
+                event_type == "cast" and
+                target_id in tank_ids
+            )
+
+            # Check if current rotation has timed out (7 second Lifebloom duration)
+            rotation_timed_out = (
+                current_rotation_start_time is not None and
+                (timestamp - current_rotation_start_time) >= (LIFEBLOOM_DURATION * 1000)
+            )
+
+            if is_lifebloom_on_tank:
+                if current_rotation_target_id is None or rotation_timed_out:
+                    # Start a new rotation (no active rotation or timed out)
+                    is_rotation_start = True
+                    current_rotation_target_id = target_id
+                    current_rotation_start_time = timestamp
+                elif target_id == current_rotation_target_id:
+                    # Lifebloom on same target that started rotation = new rotation
+                    is_rotation_start = True
+                    current_rotation_start_time = timestamp
+                else:
+                    # Lifebloom on a DIFFERENT tank during active rotation
+                    is_lifebloom_tank = True
+            elif ability_id == LIFEBLOOM_ID and event_type == "cast":
+                # Lifebloom on non-tank = instant cast
+                is_instant_cast = True
+            elif (
+                (ability_id == REJUVENATION_ID and event_type == "cast") or
+                (ability_id == TREE_OF_LIFE_ID and event_type == "cast") or
+                (ability_id == SWIFTMEND_ID and event_type == "cast") or
+                (ability_id == NATURES_SWIFTNESS_ID and event_type == "cast") or
+                (ability_id == INNERVATE_ID and event_type == "cast")
+            ):
+                is_instant_cast = True
+
+        else:
+            # Standard rotation logic (single active tank)
+            is_rotation_start = (
+                ability_id == LIFEBLOOM_ID and
+                event_type == "cast" and
+                target_id == active_tank_id and
+                active_tank_id is not None
+            )
+
+            is_instant_cast = (
+                (ability_id == LIFEBLOOM_ID and event_type == "cast" and target_id != active_tank_id) or
+                (ability_id == REJUVENATION_ID and event_type == "cast") or
+                (ability_id == TREE_OF_LIFE_ID and event_type == "cast") or
+                (ability_id == SWIFTMEND_ID and event_type == "cast") or
+                (ability_id == NATURES_SWIFTNESS_ID and event_type == "cast") or
+                (ability_id == INNERVATE_ID and event_type == "cast")
+            )
 
         if is_rotation_start:
             rotation_count += 1
@@ -913,6 +1332,7 @@ def analyze_druid_performance(report_code, boss_name, player_name):
             "type": event_type,
             "ability_id": ability_id,
             "rotation_start": is_rotation_start,
+            "lifebloom_tank": is_lifebloom_tank,
             "instant_cast": is_instant_cast,
             "regrowth": is_regrowth,
             "rotation_number": rotation_count if is_rotation_start else None
@@ -935,9 +1355,14 @@ def analyze_druid_performance(report_code, boss_name, player_name):
     first_rotation_seen = False
     casts_since_rotation_end = 0
 
+    # For Eredar Twins P1, use full Lifebloom duration for section timeout
+    # (multi-tank rotations need more flexibility than single-tank)
+    section_timeout = LIFEBLOOM_DURATION if is_eredar_twins_p1 else rotation_timeout
+
     for i, cast in enumerate(cast_data):
         # Determine abbreviation
-        if cast['rotation_start']:
+        # Note: Both "Rotation started" and "Lifebloom (Tank)" count as LB
+        if cast['rotation_start'] or cast.get('lifebloom_tank'):
             abbr_str = "LB"
         elif cast['instant_cast']:
             abbr_str = "I"
@@ -982,7 +1407,7 @@ def analyze_druid_performance(report_code, boss_name, player_name):
                 casts_since_rotation_end = 0
 
         # Rule: add separator every 5 casts when not in rotation
-        elif not in_rotation and first_rotation_seen:
+        elif not in_rotation:
             if casts_since_rotation_end > 0 and casts_since_rotation_end % CASTS_BETWEEN_SEPARATORS == 0:
                 should_end_section = True
 
@@ -1085,7 +1510,11 @@ def analyze_druid_performance(report_code, boss_name, player_name):
         "rotating_on_tank": rotating_on_tank,
         "fight_start_time": fight_start_time,
         "player_gcd": round(player_gcd, 3),
-        "rotation_timeout": round(rotation_timeout, 3)
+        "rotation_timeout": round(rotation_timeout, 3),
+        "phase": phase,
+        "phase_info": phase_info,
+        "boss_name": boss_name,
+        "encounter_id": encounter_id
     }
 
 
@@ -1102,6 +1531,8 @@ def display_results(data):
     print("ENCOUNTER INFORMATION")
     print("=" * 70)
     print(f"Date: {date_str}")
+    if data.get('phase'):
+        print(f"Phase: {data['phase']} (of {data['boss_name']} encounter)")
     print(f"Duration: {data['duration_minutes']}m {data['duration_seconds']}s")
     print()
 
@@ -1120,6 +1551,23 @@ def display_results(data):
                 print(f"  • {player}")
 
     print()
+
+    # ===== TANK ASSIGNMENT =====
+    tanks = data.get('tanks', [])
+    if tanks:
+        print("=" * 70)
+        print("TANK ASSIGNMENT")
+        print("=" * 70)
+        print(f"\nTotal Tanks: {len(tanks)}")
+        print()
+        for tank in tanks:
+            tank_name = tank.get('name', 'Unknown')
+            boss = tank.get('boss')
+            if boss:
+                print(f"  • {tank_name} ({boss} tank)")
+            else:
+                print(f"  • {tank_name}")
+        print()
 
     # ===== RESTORATION DRUID STATS =====
     print("=" * 70)
@@ -1240,6 +1688,8 @@ def display_results(data):
         # Determine action string
         if cast['rotation_start']:
             action_str = "Rotation started"
+        elif cast.get('lifebloom_tank'):
+            action_str = "Lifebloom (Tank)"
         elif cast['instant_cast']:
             action_str = "Instant cast"
         elif cast['regrowth']:
@@ -1248,7 +1698,8 @@ def display_results(data):
             action_str = ""
 
         # Determine abbreviation
-        if cast['rotation_start']:
+        # Note: Both "Rotation started" and "Lifebloom (Tank)" count as LB
+        if cast['rotation_start'] or cast.get('lifebloom_tank'):
             abbr_str = "LB"
         elif cast['instant_cast']:
             abbr_str = "I"
@@ -1285,7 +1736,7 @@ def display_results(data):
                 casts_since_rotation_end = 0
 
         # Rule: add separator every 5 casts when not in rotation
-        elif not in_rotation and first_rotation_seen:
+        elif not in_rotation:
             if casts_since_rotation_end > 0 and casts_since_rotation_end % CASTS_BETWEEN_SEPARATORS == 0:
                 should_end_section = True
 
@@ -1369,15 +1820,29 @@ def display_results(data):
 
 def main():
     """Main execution function"""
-    if len(sys.argv) != 4:
-        print("Usage: python analyze_druid.py <report_id> <boss_name> <player_name>")
-        print("\nExample:")
+    if len(sys.argv) < 4 or len(sys.argv) > 5:
+        print("Usage: python analyze_druid.py <report_id> <boss_name> <player_name> [phase]")
+        print("\nExamples:")
         print("  python analyze_druid.py wX7H9RtYJ48P1cdW Brutallus Mercychann")
+        print("  python analyze_druid.py wX7H9RtYJ48P1cdW \"Eredar Twins\" Mercychann 1")
+        print("  python analyze_druid.py wX7H9RtYJ48P1cdW \"Eredar Twins\" Mercychann 2")
+        print("\nNote: Phase parameter is optional and currently only works for Eredar Twins")
         return 1
 
     report_code = sys.argv[1]
     boss_name = sys.argv[2]
     player_name = sys.argv[3]
+    phase = None
+
+    if len(sys.argv) == 5:
+        try:
+            phase = int(sys.argv[4])
+            if phase not in [1, 2]:
+                print("Error: Phase must be 1 or 2")
+                return 1
+        except ValueError:
+            print("Error: Phase must be a number (1 or 2)")
+            return 1
 
     print("=" * 70)
     print("WARCRAFTLOGS RESTORATION DRUID ANALYSIS")
@@ -1385,7 +1850,7 @@ def main():
     print()
 
     try:
-        data = analyze_druid_performance(report_code, boss_name, player_name)
+        data = analyze_druid_performance(report_code, boss_name, player_name, phase)
         display_results(data)
         return 0
     except Exception as e:

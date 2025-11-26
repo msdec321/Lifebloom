@@ -9,13 +9,17 @@ app = Flask(__name__)
 # Available datasets - best report per player
 DATASETS_BEST = {
     'brutallus': 'data/t6/brutallus.csv',
-    'felmyst': 'data/t6/felmyst.csv'
+    'felmyst': 'data/t6/felmyst.csv',
+    'eredar_twins_p1': 'data/t6/eredar_twins_p1.csv',
+    'eredar_twins_p2': 'data/t6/eredar_twins_p2.csv'
 }
 
 # Available datasets - all reports per player
 DATASETS_ALL = {
     'brutallus': 'data/t6/brutallus_all_reports.csv',
-    'felmyst': 'data/t6/felmyst_all_reports.csv'
+    'felmyst': 'data/t6/felmyst_all_reports.csv',
+    'eredar_twins_p1': 'data/t6/eredar_twins_p1_all_reports.csv',
+    'eredar_twins_p2': 'data/t6/eredar_twins_p2_all_reports.csv'
 }
 
 def load_data(dataset='brutallus', data_source='best'):

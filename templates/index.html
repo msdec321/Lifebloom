@@ -907,9 +907,17 @@
                     <div class="filter-section-title">Fight Settings</div>
                     <div class="filter-item">
                         <label for="dataset">Boss:</label>
-                        <select id="dataset" onchange="loadData()">
+                        <select id="dataset" onchange="onBossChange()">
                             <option value="brutallus" data-i18n="boss.brutallus">Brutallus</option>
-                            <option value="felmyst">Felmyst</option>
+                            <option value="felmyst" data-i18n="boss.felmyst">Felmyst</option>
+                            <option value="eredar_twins" data-i18n="boss.eredar_twins">Eredar Twins</option>
+                        </select>
+                    </div>
+                    <div class="filter-item" id="phaseFilterContainer" style="display: none;">
+                        <label for="phaseSelect">Phase:</label>
+                        <select id="phaseSelect" onchange="loadData()">
+                            <option value="1">Phase 1</option>
+                            <option value="2">Phase 2</option>
                         </select>
                     </div>
                     <div class="filter-item">
@@ -1276,7 +1284,7 @@
                             <label for="bossName">Boss:</label>
                             <select id="bossName" style="width: 180px;">
                                 <option value="Brutallus" data-i18n="boss.brutallus">Brutallus</option>
-                                <option value="Felmyst">Felmyst</option>
+                                <option value="Felmyst" data-i18n="boss.felmyst">Felmyst</option>
                                 <option value="Eredar Twins">Eredar Twins</option>
                                 <option value="M'uru">M'uru</option>
                                 <option value="Kil'jaeden">Kil'jaeden</option>
@@ -1574,6 +1582,8 @@
                 'icons.dreamstate': 'Dreamstate',
                 'icons.naturesGrace': "Nature's Grace",
                 'boss.brutallus': 'Brutallus',
+                'boss.felmyst': 'Felmyst',
+                'boss.eredar_twins': 'Eredar Twins',
                 'chart.haste': 'Haste',
                 'chart.hpsVsHaste': 'HPS vs Haste',
                 'chart.avgHpsByHasteBin': 'Avg HPS by Haste Bin',
@@ -1587,6 +1597,8 @@
                 'icons.dreamstate': '梦境',
                 'icons.naturesGrace': '自然之赐',
                 'boss.brutallus': '布鲁塔卢斯',
+                'boss.felmyst': '菲米丝',
+                'boss.eredar_twins': '艾瑞达双子',
                 'chart.haste': '急速',
                 'chart.hpsVsHaste': 'HPS vs 急速',
                 'chart.avgHpsByHasteBin': 'Avg HPS by 急速 Bin',
@@ -1714,7 +1726,7 @@
 
         // Load and update chart with all filtered data
         async function updateChart() {
-            const dataset = document.getElementById('dataset').value;
+            const dataset = getDatasetName();
             const dataSource = document.querySelector('input[name="dataSource"]:checked').value;
             const totalHealers = document.getElementById('totalHealers').value;
             const shadowPriest = document.getElementById('shadowPriest').value;
@@ -1870,7 +1882,7 @@
 
         // Load and update Haste chart with all filtered data
         async function updateHasteChart() {
-            const dataset = document.getElementById('dataset').value;
+            const dataset = getDatasetName();
             const dataSource = document.querySelector('input[name="dataSource"]:checked').value;
             const totalHealers = document.getElementById('totalHealers').value;
             const shadowPriest = document.getElementById('shadowPriest').value;
@@ -2144,7 +2156,7 @@
 
         // Load and update Rotation chart with average HPS by primary rotation
         async function updateRotationChart() {
-            const dataset = document.getElementById('dataset').value;
+            const dataset = getDatasetName();
             const dataSource = document.querySelector('input[name="dataSource"]:checked').value;
             const totalHealers = document.getElementById('totalHealers').value;
             const shadowPriest = document.getElementById('shadowPriest').value;
@@ -2395,7 +2407,7 @@
 
         async function loadTopN() {
             const n = document.getElementById('topN').value || 20;
-            const dataset = document.getElementById('dataset').value;
+            const dataset = getDatasetName();
             const dataSource = document.querySelector('input[name="dataSource"]:checked').value;
             const totalHealers = document.getElementById('totalHealers').value;
             const shadowPriest = document.getElementById('shadowPriest').value;
@@ -2496,6 +2508,34 @@
         // Function to load all data
         function loadData() {
             loadTopN();
+        }
+
+        // Function to handle boss selection change
+        function onBossChange() {
+            const bossSelect = document.getElementById('dataset');
+            const phaseContainer = document.getElementById('phaseFilterContainer');
+
+            // Show phase selector only for Eredar Twins
+            if (bossSelect.value === 'eredar_twins') {
+                phaseContainer.style.display = '';
+            } else {
+                phaseContainer.style.display = 'none';
+            }
+
+            loadData();
+        }
+
+        // Function to get the actual dataset name (handles Eredar Twins phases)
+        function getDatasetName() {
+            const bossSelect = document.getElementById('dataset');
+            const boss = bossSelect.value;
+
+            if (boss === 'eredar_twins') {
+                const phase = document.getElementById('phaseSelect').value;
+                return `eredar_twins_p${phase}`;
+            }
+
+            return boss;
         }
 
         // Function to set filter and update buttons
