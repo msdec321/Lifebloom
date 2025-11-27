@@ -529,6 +529,86 @@
             margin-top: 15px;
         }
 
+        /* Theorycraft Section Styles */
+        .theorycraft-section {
+            background: #16213e;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border: 1px solid #2a3f5f;
+        }
+
+        .theorycraft-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 25px;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        .theorycraft-header:hover {
+            background: rgba(255,255,255,0.02);
+        }
+
+        .theorycraft-content {
+            padding: 0 25px 25px 25px;
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+        }
+
+        .theorycraft-content.collapsed {
+            max-height: 0 !important;
+            opacity: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+
+        .theorycraft-content h3 {
+            color: #bebeb1;
+            margin-top: 1.5em;
+        }
+
+        .theorycraft-content h3:first-child {
+            margin-top: 0;
+        }
+
+        .theorycraft-content h4 {
+            color: #8b9dc3;
+            margin-top: 1.2em;
+        }
+
+        .theorycraft-content h5 {
+            color: #8b9dc3;
+            margin-top: 1em;
+        }
+
+        .theorycraft-content p {
+            color: #c5d0e6;
+            line-height: 1.6;
+            margin-bottom: 1em;
+        }
+
+        .theorycraft-content ul {
+            color: #c5d0e6;
+            line-height: 1.6;
+            margin-bottom: 1em;
+        }
+
+        .theorycraft-content table {
+            background: #0a0d0a;
+            border: 1px solid #2a3f5f;
+        }
+
+        .theorycraft-content table th {
+            background: #1a1d2a;
+        }
+
+        .theorycraft-content table tr:hover {
+            background: rgba(255,255,255,0.03);
+        }
+
         .section-divider {
             border: none;
             border-top: 1px solid #2a3f5f;
@@ -1513,11 +1593,408 @@
         <div id="theorycraftingTab" class="tab-content">
             <div class="container">
                 <h1>Community Theorycrafting</h1>
+                <p style="color: #8b9dc3; margin-bottom: 2em;">Deep dives into Restoration Druid mechanics, rotations, and optimization strategies.</p>
 
-                <div class="notice-banner">
-                    <h3>Coming Soon</h3>
-                    <p>This section will feature community-driven theorycrafting analyses, discussions, and findings about TBC Restoration Druid optimization.</p>
+                <!-- Haste Breakpoints Guide -->
+                <div class="theorycraft-section">
+                    <div class="theorycraft-header" onclick="toggleTheorycraft('hasteBreakpoints', this)">
+                        <h2 style="margin: 0; color: #bebeb1; font-size: 1.2em;">Rotation Theory & Haste Breakpoints</h2>
+                        <button class="collapse-btn theorycraft-toggle">Expand</button>
+                    </div>
+                    <div class="theorycraft-content collapsed" id="hasteBreakpointsContent">
+                        <br>
+                        <p>As a Restoration Druid maintaining Lifebloom on a tank, your healing follows a <strong>rotation cycle</strong> - the sequence of spells you cast between Lifebloom refreshes. Since Lifebloom has a 7-second duration, you have a limited window to weave in additional heals before needing to refresh it.</p>
+                        <p>This write-up provides a deep dive on rotations and haste breakpoints. The intent with this post is to explain what rotations <strong>are possible</strong> at different breakpoints. Which rotations are <strong>optimal</strong> in any given situation is outside the scope of this post.</p>
+
+                        <hr style="border-color: #3a3d3a; margin: 2em 0;">
+
+                        <h3>Rotation Mechanics</h3>
+
+                        <br>
+
+                        <p>For an introductory overview on rotations, I'd refer you to SixPacKyx's <a href="https://www.wowhead.com/tbc/guide/classes/druid/healer-rotation-cooldowns-abilities-pve" target="_blank" style="color: #667eea;">WowHead guide</a> under the "Rolling Lifebloom: Advanced Restoration Druid Healing Rotation" section, and additionally giansm's <a href="https://web.archive.org/web/20080913120521/http://elitistjerks.com/f31/t17783-druid_raiding_tree/#Healing_Strategies" target="_blank" style="color: #667eea;">Elitist Jerks guide</a> under the "Healing Strategies" section.</p>
+                            
+                        <p style="margin-bottom: 10px;">To help discuss rotations more easily, I've created a standard notation for rotations: <strong style="color: #DE772A;">xLB yI zRG</strong></p>
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li><strong>x:</strong> The number of tanks you are rolling Lifebloom on during a rotation.</li>
+                            <li><strong>y:</strong> The number of instant cast spells used during a rotation (Rejuv, Swiftmend, Lifebloom on non-tanks, etc.)</li>
+                            <li><strong>z:</strong> The number of Regrowth casts used during the rotation.</li>
+                        </ul>
+                        <p style="margin-top: 15px; margin-bottom: 10px;">To illustrate, here are a few examples:</p>
+                        <ul style="margin-left: 20px;">
+                            <li><strong style="color: #DE772A;">1LB 1I 1RG</strong> - A typical unhasted 1 tank rotation. The Druid refreshes Lifebloom on the tank, uses an instant cast spell (perhaps refreshing Rejuv on the tank), and casts 1 Regrowth.</li>
+                            <li><strong style="color: #DE772A;">2LB 2I 0RG</strong> - A typical unhasted 2 tank rotation. The Druid refreshes Lifebloom on two tanks and uses two instant cast spells, but does not cast any Regrowths.</li>
+                            <li><strong style="color: #DE772A;">0LB 0I 5RG</strong> - The Druid does not cast Lifebloom on any tank, but instead casts Regrowth five times in a row.</li>
+                        </ul>
+
+                        <p style="margin-bottom: 10px;">In the following sections, I'll only be tabulating single-tank rotations (1LB yI zRG), but equivalent 2-tank and 3-tank rotations can be done by exchanging an instant cast with a tank lifebloom,</p>
+                        <ul style="margin-left: 20px;">
+                            <li><strong style="color: #DE772A;">[1LB 3I 0RG]</strong> = <strong style="color: #DE772A;">[2LB 2I 0RG]</strong> = <strong style="color: #DE772A;">[3LB 1I 0RG]</strong></li>
+                        </ul>
+
+                        <hr style="border-color: #3a3d3a; margin: 2em 0;">
+
+                        <h2>0 Spell Haste Rating</h2>
+                        <br>
+                        <p>For most of the expansion (all of t4, t5, and some of t6) you'll have no haste. These rotations will be your bread-and-butter for most of your time in TBC, so get familiar with them!</p>
+
+                        <table style="margin: 1em 0; max-width: 600px;">
+                            <thead>
+                                <tr>
+                                    <th>Rotation</th>
+                                    <th>Instants</th>
+                                    <th>Regrowths</th>
+                                    <th>Time Used</th>
+                                    <th>Buffer</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>[1LB 1I 1RG]</strong></td>
+                                    <td>1</td>
+                                    <td>1</td>
+                                    <td>5.0s</td>
+                                    <td>2.0s</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>[1LB 0I 2RG]</strong></td>
+                                    <td>0</td>
+                                    <td>2</td>
+                                    <td>5.5s</td>
+                                    <td>1.5s</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>[1LB 3I 0RG]</strong></td>
+                                    <td>3</td>
+                                    <td>0</td>
+                                    <td>6.0s</td>
+                                    <td>1.0s</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>[1LB 2I 1RG]</strong></td>
+                                    <td>2</td>
+                                    <td>1</td>
+                                    <td>6.5s</td>
+                                    <td>0.5s</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>[1LB 1I 2RG]</strong></td>
+                                    <td>1</td>
+                                    <td>2</td>
+                                    <td>7.0s</td>
+                                    <td>0.0s</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <br>
+                        <strong>However...</strong> Experienced players will raise an eyebrow at the above list. Why? Because we're missing an extremely important part of the conversation...
+                        <br><br>
+
+                        <hr style="border-color: #3a3d3a; margin: 2em 0;">
+
+                        <h2>Latency</h2>
+                        <br>
+                        <p><strong>In theory</strong>, the above 5 rotations are possible at 0 haste. <strong>In practice</strong>, latency (ping) limits your options. When you cast a spell, you must wait for the server to register it before your next cast. This creates an <strong>effective "Server GCD"</strong>:</p>
+                        
+                        <h5 style="margin-top: 1.5em;">Effective GCD by Ping</h5>
+                        <table style="margin: 1em 0; max-width: 600px;">
+                            <thead>
+                                <tr>
+                                    <th>Normal GCD</th>
+                                    <th>Ping</th>
+                                    <th>Effective GCD</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1.50s</td>
+                                    <td>0ms</td>
+                                    <td>1.50s</td>
+                                </tr>
+                                <tr>
+                                    <td>1.50s</td>
+                                    <td>50ms</td>
+                                    <td>~1.55s</td>
+                                </tr>
+                                <tr>
+                                    <td>1.50s</td>
+                                    <td>100ms</td>
+                                    <td>~1.60s</td>
+                                </tr>
+                                <tr>
+                                    <td>1.50s</td>
+                                    <td>150ms</td>
+                                    <td>~1.65s</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h5 style="margin-top: 1.5em;">Rotation Viability by Ping</h5>
+                        <table style="margin: 1em 0; max-width: 600px;">
+                            <thead>
+                                <tr>
+                                    <th>Rotation</th>
+                                    <th>0ms</th>
+                                    <th>50ms</th>
+                                    <th>100ms</th>
+                                    <th>150ms</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>[1LB 1I 1RG]</strong></td>
+                                    <td>✓</td>
+                                    <td>✓</td>
+                                    <td>✓</td>
+                                    <td>✓</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>[1LB 0I 2RG]</strong></td>
+                                    <td>✓</td>
+                                    <td>✓</td>
+                                    <td>✓</td>
+                                    <td>✓</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>[1LB 3I 0RG]</strong></td>
+                                    <td>✓</td>
+                                    <td>✓</td>
+                                    <td>✓</td>
+                                    <td>✓</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>[1LB 2I 1RG]</strong></td>
+                                    <td>✓</td>
+                                    <td>✓</td>
+                                    <td>✓</td>
+                                    <td>✗</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>[1LB 1I 2RG]</strong></td>
+                                    <td>✓</td>
+                                    <td>✗</td>
+                                    <td>✗</td>
+                                    <td>✗</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        Does that mean you might be stuck with the same three rotations for most of the expansion? Yep! Get used to it.
+                        <br><br>
+
+                        <hr style="border-color: #3a3d3a; margin: 2em 0;">
+
+                        <h2>Hyjal / BT / Zul'Aman Haste Breakpoints</h2>
+
+                        <h4>Haste Formulas</h4>
+                        <pre style="background: #0a0d0a; padding: 1em; border-radius: 5px; overflow-x: auto; color: #90ee90; max-width: 600px;">GCD = 1.5 / (1 + Haste Rating / 1577)
+Regrowth Cast Time = 2.0 / (1 + Haste Rating / 1577)</pre>
+                        <br>
+
+                        <p>As you begin to acquire haste from gear, new rotations become possible. With one or two items you'll quickly be able to cast <strong style="color: #DE772A;">[1LB 1I 2RG]</strong>.</p>
+                        <p>With Hyjal / BT you can expect to collect at most around 230 Haste (good luck getting those rings and cloak 🙂). With just a few items you'll unlock the often mentioned "5-GCD" rotation, <strong style="color: #DE772A;">[1LB 4I 0RG]</strong>, which can be a fun rotation to do on Illidari Council.</p>
+                        <p>Less often mentioned, you'll unlock <strong style="color: #DE772A;">[1LB 0I 3RG]</strong> at about the same haste level. Though Hjal/BT offers a lot of haste options, there's not much point going beyond the 113 Haste breakpoint, as the next breakpoint isn't realistically reachable until Zul'Aman releases.</p>
+                        <p>With the release of Zul'Aman, you can get up to about 300 Haste rating, allowing you to comfortably cast <strong style="color: #DE772A;">[1LB 3I 1RG]</strong>, though you'd be very lucky to collect that much Haste gear before the release of Sunwell!</p>
+
+                        <h5 style="margin-top: 1.5em;">Minimum Haste Required by Latency</h5>
+                        <table style="margin: 1em 0; max-width: 600px;">
+                            <thead>
+                                <tr>
+                                    <th>Rotation</th>
+                                    <th>0ms</th>
+                                    <th>50ms</th>
+                                    <th>100ms</th>
+                                    <th>150ms</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>[1LB 1I 2RG]</strong></td>
+                                    <td>0</td>
+                                    <td>11</td>
+                                    <td>23</td>
+                                    <td>35</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>[1LB 4I 0RG]</strong></td>
+                                    <td>113</td>
+                                    <td>125</td>
+                                    <td>137</td>
+                                    <td>150</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>[1LB 0I 3RG]</strong></td>
+                                    <td>113</td>
+                                    <td>125</td>
+                                    <td>137</td>
+                                    <td>150</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>[1LB 3I 1RG]</strong></td>
+                                    <td>225</td>
+                                    <td>238</td>
+                                    <td>251</td>
+                                    <td>265</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <hr style="border-color: #3a3d3a; margin: 2em 0;">
+
+                        <br>
+                        <h2>Sunwell Plateau Haste Breakpoints</h2>
+                        <br>
+                        <p>With Sunwell gear, significantly higher haste values become achievable, unlocking additional rotations. From gear alone you can expect to get around 400 Haste rating, giving you access to <strong style="color: #DE772A;">[1LB 2I 2RG]</strong>.</p>
+                        <p>However, with Sunwell we also get access to the Quick Lionseye gem (+10 Spell Haste), allowing you to reach a little over 500 Haste and access to <strong style="color: #DE772A;">[1LB 5I 0RG]</strong> and <strong style="color: #DE772A;">[1LB 1I 3RG]</strong>.</p>
+
+                        <h5 style="margin-top: 1.5em;">Minimum Haste Required by Latency</h5>
+                        <table style="margin: 1em 0; max-width: 600px;">
+                            <thead>
+                                <tr>
+                                    <th>Rotation</th>
+                                    <th>0ms</th>
+                                    <th>50ms</th>
+                                    <th>100ms</th>
+                                    <th>150ms</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>[1LB 2I 2RG]</strong></td>
+                                    <td>338</td>
+                                    <td>352</td>
+                                    <td>366</td>
+                                    <td>380</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>[1LB 5I 0RG]</strong></td>
+                                    <td>451</td>
+                                    <td>465</td>
+                                    <td>480</td>
+                                    <td>495</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>[1LB 1I 3RG]</strong></td>
+                                    <td>451</td>
+                                    <td>465</td>
+                                    <td>480</td>
+                                    <td>495</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>[1LB 4I 1RG]</strong></td>
+                                    <td>563</td>
+                                    <td>579</td>
+                                    <td>594</td>
+                                    <td>610</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <hr style="border-color: #3a3d3a; margin: 2em 0;">
+
+                        <br>
+                        <h2>To go... Even further beyond...</h2>
+                        <br>
+                        <p>With <strong>Bloodlust/Heroism</strong> active (30% haste buff), you'll have access to rotations that would otherwise not be possible from gear alone. At higher haste values, the GCD becomes capped at <strong>1.0s</strong>, creating a <strong>6.0s rotation window</strong>:</p>
+                        <p>Below are a set of minimum haste ratings needed to do these set of rotations while under Bloodlust. The last example, <strong style="color: #DE772A;">[1LB 0I 6RG]</strong>, is not possible even with max Haste and Bloodlust.</p>
+
+                        <h5 style="margin-top: 1.5em;">Minimum Haste Required by Latency (with Bloodlust)</h5>
+                        <table style="margin: 1em 0; max-width: 600px;">
+                            <thead>
+                                <tr>
+                                    <th>Rotation</th>
+                                    <th>0ms</th>
+                                    <th>50ms</th>
+                                    <th>100ms</th>
+                                    <th>150ms</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>[1LB 4I 1RG]</strong></td>
+                                    <td>70</td>
+                                    <td>82</td>
+                                    <td>93</td>
+                                    <td>106</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>[1LB 3I 2RG]</strong></td>
+                                    <td>156</td>
+                                    <td>169</td>
+                                    <td>181</td>
+                                    <td>194</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>[1LB 6I 0RG]</strong></td>
+                                    <td>243</td>
+                                    <td>339</td>
+                                    <td>445</td>
+                                    <td>565</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>[1LB 2I 3RG]</strong></td>
+                                    <td>243</td>
+                                    <td>265</td>
+                                    <td>289</td>
+                                    <td>314</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>[1LB 1I 4RG]</strong></td>
+                                    <td>364</td>
+                                    <td>383</td>
+                                    <td>404</td>
+                                    <td>424</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>[1LB 0I 5RG]</strong></td>
+                                    <td>445</td>
+                                    <td>462</td>
+                                    <td>479</td>
+                                    <td>497</td>
+                                </tr>
+                                <tr style="color: #888;">
+                                    <td>[1LB 0I 6RG]</td>
+                                    <td>849</td>
+                                    <td>869</td>
+                                    <td>890</td>
+                                    <td>911</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <br><br>
+                        <h2>Rotation Unlock by Haste</h2>
+                        <br>
+                        <p>The following chart visualizes when each rotation becomes available as you acquire more haste:</p>
+                        <div style="max-width: 700px; margin: 1em 0;">
+                            <div style="margin-bottom: 1em;">
+                                <label for="latencySlider" style="display: inline-block; margin-right: 1em;">Latency: <strong id="latencyValue">0ms</strong></label>
+                                <input type="range" id="latencySlider" min="0" max="300" step="10" value="0" style="width: 200px; vertical-align: middle;">
+                            </div>
+                            <div style="height: 450px;">
+                                <canvas id="hasteBreakpointChart"></canvas>
+                            </div>
+                        </div>
+
+                        <hr style="border-color: #3a3d3a; margin: 2em 0;">
+
+                        <h2>Wrapping Up</h2>
+                        <br>
+
+                        <p>Hopefully this gives you some impression about the amount of complexity in Resto Druid. But don't worry, it gets worse! Here's a couple points to consider: 
+                            
+                        <p>First, just because you can reach the breakpoint for a new rotation, it doesn't mean that you should. This write-up <strong>only</strong> covers what is possible, not what is good. What is possible and what is <strong>optimal</strong> are two completely different questions. I say that because a very important constraint has been left out of this conversation entirely: <strong>mana</strong>. Just because you've unlocked a new Regrowth-heavy rotation doesn't mean that you have the mana to do it. The complexity of Resto Druid does not come from knowing what rotations there are, but <strong>which one to do</strong> given the specifics of the encounter and your sitatuation.</p>
+                        
+                        <p>Second, layered on top of that, the same kind of rotation can actually serve different purposes. As a simple example, consider <strong style="color: #DE772A;">[1LB 1I 1RG]</strong>. You put Lifebloom on the tank, but what do you do with your instant and Regrowth cast? Should they also go onto the tank, or elsewhere?</p>
+                        <p>You'll meet some purists in the community who will tell you that all GCDs go on the tank. "That's your job." You'll meet other healers that just neglect the tank and put their GCDs onto the raid instead. What will you do?</p>
+                        <p>Here's my opinion: what you choose to do with your GCDs is up to you, every seven seconds. No other healer in TBC has the level of flexibility combined with direct throughput that a Resto Druid has, and that becomes a superpower once you learn how to use it. Thanks for reading!</p>
+
+                        <p class="signature">- Mercy</p>
+
+                    </div>
                 </div>
+
             </div>
         </div>
 
@@ -2362,6 +2839,24 @@
             }
         }
 
+        // Toggle theorycraft section collapse/expand
+        function toggleTheorycraft(sectionId, header) {
+            const content = document.getElementById(sectionId + 'Content');
+            const button = header.querySelector('.theorycraft-toggle');
+
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                content.style.maxHeight = content.scrollHeight + 'px';
+                button.textContent = 'Collapse';
+            } else {
+                content.style.maxHeight = content.scrollHeight + 'px';
+                setTimeout(() => {
+                    content.classList.add('collapsed');
+                }, 10);
+                button.textContent = 'Expand';
+            }
+        }
+
         // Toggle table collapse/expand
         function toggleTable() {
             const tableContent = document.getElementById('tableContent');
@@ -2873,6 +3368,155 @@
                 }
             });
         });
+
+        // Haste Breakpoint Chart
+        let hasteBreakpointChart = null;
+
+        function initHasteBreakpointChart() {
+            const ctx = document.getElementById('hasteBreakpointChart');
+            if (!ctx) return;
+
+            // Rotation data with haste values at different latencies (Model B: latency added per action)
+            const rotationData = [
+                { rotation: '[1LB 1I 1RG]', haste: { 0: 0, 50: 0, 100: 0, 150: 0, 200: 0, 250: 0, 300: 0 }, tier: 'Baseline' },
+                { rotation: '[1LB 0I 2RG]', haste: { 0: 0, 50: 0, 100: 0, 150: 0, 200: 0, 250: 0, 300: 0 }, tier: 'Baseline' },
+                { rotation: '[1LB 3I 0RG]', haste: { 0: 0, 50: 0, 100: 0, 150: 0, 200: 0, 250: 0, 300: 54 }, tier: 'Baseline' },
+                { rotation: '[1LB 2I 1RG]', haste: { 0: 0, 50: 0, 100: 0, 150: 25, 200: 76, 250: 131, 300: 190 }, tier: 'Baseline' },
+                { rotation: '[1LB 1I 2RG]', haste: { 0: 0, 50: 46, 100: 96, 150: 148, 200: 203, 250: 263, 300: 326 }, tier: 'Pre-Raid' },
+                { rotation: '[1LB 4I 0RG]', haste: { 0: 112, 50: 175, 100: 243, 150: 315, 200: 394, 250: 479, 300: 574 }, tier: 'Hyjal/BT' },
+                { rotation: '[1LB 0I 3RG]', haste: { 0: 112, 50: 162, 100: 214, 150: 271, 200: 331, 250: 394, 300: 462 }, tier: 'Hyjal/BT' },
+                { rotation: '[1LB 3I 1RG]', haste: { 0: 225, 50: 292, 100: 364, 150: 441, 200: 525, 250: 616, 300: 717 }, tier: 'Zul\'Aman' },
+                { rotation: '[1LB 2I 2RG]', haste: { 0: 337, 50: 408, 100: 486, 150: 568, 200: 657, 250: 754, 300: 859 }, tier: 'Sunwell' },
+                { rotation: '[1LB 5I 0RG]', haste: { 0: 451, 50: 541, 100: 640, 150: 749, 200: 870, 250: 1003, 300: 1152 }, tier: 'Sunwell' },
+                { rotation: '[1LB 1I 3RG]', haste: { 0: 451, 50: 525, 100: 607, 150: 694, 200: 789, 250: 891, 300: 1003 }, tier: 'Sunwell' },
+            ];
+
+            // Color mapping by haste value
+            const hasteColors = {
+                'Hyjal/BT': { bg: 'rgba(163, 53, 238, 0.7)', border: 'rgba(163, 53, 238, 1)' },
+                'Zul\'Aman': { bg: 'rgba(255, 215, 0, 0.7)', border: 'rgba(255, 215, 0, 1)' },
+                'Sunwell': { bg: 'rgba(255, 128, 0, 0.7)', border: 'rgba(255, 128, 0, 1)' },
+                'Bloodlust': { bg: 'rgba(220, 20, 60, 0.7)', border: 'rgba(220, 20, 60, 1)' },
+            };
+
+            // Function to get color based on haste value
+            function getColorForHaste(haste) {
+                if (haste <= 230) return hasteColors['Hyjal/BT'];
+                if (haste <= 300) return hasteColors['Zul\'Aman'];
+                if (haste <= 500) return hasteColors['Sunwell'];
+                return hasteColors['Bloodlust'];
+            }
+
+            // Function to get tier name based on haste value
+            function getTierForHaste(haste) {
+                if (haste <= 230) return 'Hyjal/BT';
+                if (haste <= 300) return 'Zul\'Aman';
+                if (haste <= 500) return 'Sunwell';
+                return 'Bloodlust Only';
+            }
+
+            // Function to get haste value for a given latency (interpolate if needed)
+            function getHasteForLatency(data, latency) {
+                // Round to nearest known value
+                const knownLatencies = [0, 50, 100, 150, 200, 250, 300];
+                let closest = knownLatencies.reduce((prev, curr) =>
+                    Math.abs(curr - latency) < Math.abs(prev - latency) ? curr : prev
+                );
+                return data.haste[closest];
+            }
+
+            // Function to update chart with new latency
+            function updateChart(latency) {
+                if (!hasteBreakpointChart) return;
+
+                const newData = rotationData.map(d => getHasteForLatency(d, latency));
+                hasteBreakpointChart.data.datasets[0].data = newData;
+                // Update bar colors based on haste values
+                hasteBreakpointChart.data.datasets[0].backgroundColor = newData.map(h => getColorForHaste(h).bg);
+                hasteBreakpointChart.data.datasets[0].borderColor = newData.map(h => getColorForHaste(h).border);
+                // Dynamically adjust x-axis max based on highest haste value
+                const maxHaste = Math.max(...newData);
+                hasteBreakpointChart.options.scales.x.max = Math.ceil((maxHaste + 50) / 100) * 100;
+                hasteBreakpointChart.update();
+            }
+
+            hasteBreakpointChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: rotationData.map(d => d.rotation),
+                    datasets: [{
+                        label: 'Haste Required',
+                        data: rotationData.map(d => d.haste[0]),
+                        backgroundColor: rotationData.map(d => getColorForHaste(d.haste[0]).bg),
+                        borderColor: rotationData.map(d => getColorForHaste(d.haste[0]).border),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const data = rotationData[context.dataIndex];
+                                    const latency = parseInt(document.getElementById('latencySlider')?.value || 0);
+                                    const haste = getHasteForLatency(data, latency);
+                                    return `${haste} Haste (${getTierForHaste(haste)})`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 500,
+                            title: {
+                                display: true,
+                                text: 'Haste Rating',
+                                color: '#c9d1d9'
+                            },
+                            ticks: {
+                                color: '#8b949e'
+                            },
+                            grid: {
+                                color: 'rgba(139, 148, 158, 0.2)'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#c9d1d9',
+                                font: {
+                                    family: 'monospace'
+                                }
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Set up latency slider
+            const slider = document.getElementById('latencySlider');
+            const latencyValue = document.getElementById('latencyValue');
+
+            if (slider && latencyValue) {
+                slider.addEventListener('input', function() {
+                    const latency = parseInt(this.value);
+                    latencyValue.textContent = latency + 'ms';
+                    updateChart(latency);
+                });
+            }
+        }
+
+        // Initialize chart when DOM is ready
+        document.addEventListener('DOMContentLoaded', initHasteBreakpointChart);
     </script>
 </body>
 </html>

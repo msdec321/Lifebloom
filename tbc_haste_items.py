@@ -26,7 +26,6 @@ TBC_HASTE_ITEMS = {
     # =========================================================================
     # HEAD
     # =========================================================================
-    34202: (33, "Shawl of Wonderment"), # Eredar Twins
     34339: (30, "Cowl of Light's Purity"), # Kil'jaeden
     34340: (30, "Dark Conjuror's Collar"), # Kil'jaeden
 
@@ -47,6 +46,7 @@ TBC_HASTE_ITEMS = {
     # =========================================================================
     # SHOULDER
     # =========================================================================
+    34202: (33, "Shawl of Wonderment"), # Eredar Twins
     34209: (30, "Spaulders of Reclamation"), # Eredar Twins
     34210: (30, "Amice of the Convoker"), # Eredar Twins
     32583: (38, "Shoulderpads of Renewed Life"), # Leatherworking
