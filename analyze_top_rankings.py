@@ -520,6 +520,8 @@ Examples:
   python analyze_top_rankings.py 725 1 100 brutallus_us.csv --region US
   python analyze_top_rankings.py 729 1 50 kiljaeden_eu.csv --region EU
   python analyze_top_rankings.py 727 1 100 eredar_twins_p1.csv --phase 1
+  python analyze_top_rankings.py 728 1 100 muru_p1.csv --phase 1
+  python analyze_top_rankings.py 728 1 100 muru_p2.csv --phase 2
         """
     )
 

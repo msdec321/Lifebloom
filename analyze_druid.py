@@ -59,6 +59,11 @@ LADY_SACROLASH_GAME_ID = 25165
 GRAND_WARLOCK_ALYTHESS_GAME_ID = 25166
 EREDAR_TWINS_ENCOUNTER_ID = 727
 
+# M'uru gameIDs (constant across all reports)
+MURU_GAME_ID = 25741
+ENTROPIUS_GAME_ID = 25840
+MURU_ENCOUNTER_ID = 728
+
 
 def calculate_gcd(haste_rating):
     """
@@ -396,6 +401,92 @@ def detect_eredar_twins_phase2_tanks(report_code, fight_id, api_start_time, api_
     return tanks, tank_ids
 
 
+def detect_muru_phases(report_code, fight_id, fight_start_time, all_actors, headers):
+    """
+    Detect phase boundaries for M'uru encounter.
+
+    Phase 1: M'uru is active (taking damage)
+    Phase 2: Entropius phase (after M'uru transforms/stops taking damage)
+
+    Args:
+        report_code: The report code
+        fight_id: The fight ID
+        fight_start_time: The absolute start time of the fight (from report)
+        all_actors: List of all actors from report masterData
+        headers: API request headers
+
+    Returns:
+        Dictionary with phase information:
+        {
+            'has_phases': bool,
+            'phase1_end_ms': int,  # Relative to fight start (0-based)
+            'phase2_start_ms': int  # Relative to fight start (0-based)
+        }
+    """
+    print("Detecting M'uru phase boundaries...")
+
+    # Find M'uru's actor ID by gameID
+    muru_actor_id = None
+    for actor in all_actors:
+        if actor.get("gameID") == MURU_GAME_ID:
+            muru_actor_id = actor.get("id")
+            break
+
+    if muru_actor_id is None:
+        print("  ⚠ Could not find M'uru in report actors")
+        return {'has_phases': False}
+
+    query = f"""
+    query {{
+      reportData {{
+        report(code: "{report_code}") {{
+          events(
+            fightIDs: {[fight_id]}
+            dataType: DamageTaken
+            targetID: {muru_actor_id}
+            limit: 10000
+          ) {{
+            data
+          }}
+        }}
+      }}
+    }}
+    """
+
+    response = api_request_with_retry(
+        query=query,
+        headers=headers,
+        query_description="Detect M'uru phases"
+    )
+
+    if not response or response.status_code != 200:
+        print("  ⚠ Could not detect phases, treating as single-phase fight")
+        return {'has_phases': False}
+
+    result = response.json()
+    muru_events = result.get("data", {}).get("reportData", {}).get("report", {}).get("events", {}).get("data", [])
+
+    if not muru_events:
+        print("  ⚠ No damage events found for M'uru")
+        return {'has_phases': False}
+
+    # Phase 1 ends when M'uru stops taking damage (transforms into Entropius)
+    # Get the timestamp of his last damage event (absolute timestamp)
+    last_damage_event = muru_events[-1]
+    last_damage_absolute = last_damage_event.get("timestamp")
+
+    # Convert to fight-relative timestamp (0-based)
+    phase1_end_relative = last_damage_absolute - fight_start_time
+
+    print(f"✓ Phase 1 ends at {phase1_end_relative}ms (fight-relative, 0-based)")
+
+    return {
+        'has_phases': True,
+        'phase1_end_ms': phase1_end_relative,
+        'phase2_start_ms': phase1_end_relative
+    }
+
+
 def api_request_with_retry(query, variables=None, headers=None, query_description="API query"):
     """
     Execute an API request with timeout and retry logic.
@@ -597,34 +688,39 @@ def analyze_druid_performance(report_code, boss_name, player_name, phase=None):
 
     print(f"✓ Found {boss_name} (Fight ID: {fight_id}, {'KILL' if is_kill else 'WIPE'})")
 
-    # ===== STEP 1.5: Detect phases if Eredar Twins and phase specified =====
+    # ===== STEP 1.5: Detect phases for multi-phase encounters =====
     phase_info = None
     query_start_time = fight_start_time
     query_end_time = fight_end_time
     encounter_id = target_fight.get("encounterID")
 
+    # Detect phases for Eredar Twins
     if encounter_id == EREDAR_TWINS_ENCOUNTER_ID and phase:
         phase_info = detect_eredar_twins_phases(report_code, fight_id, fight_start_time, all_actors, headers)
+    # Detect phases for M'uru
+    elif encounter_id == MURU_ENCOUNTER_ID and phase:
+        phase_info = detect_muru_phases(report_code, fight_id, fight_start_time, all_actors, headers)
 
-        if phase_info.get('has_phases'):
-            if phase == 1:
-                # Phase 1: From start to when Sacrolash dies
-                query_start_time = fight_start_time
-                query_end_time = fight_start_time + phase_info['phase1_end_ms']
-                print(f"✓ Analyzing Phase 1 only (0ms to {phase_info['phase1_end_ms']}ms)")
-            elif phase == 2:
-                # Phase 2: From Sacrolash death to end
-                query_start_time = fight_start_time + phase_info['phase2_start_ms']
-                query_end_time = fight_end_time
-                print(f"✓ Analyzing Phase 2 only ({phase_info['phase2_start_ms']}ms to {fight_end_time - fight_start_time}ms)")
+    # Apply phase boundaries if detected
+    if phase_info and phase_info.get('has_phases'):
+        if phase == 1:
+            # Phase 1: From start to phase transition
+            query_start_time = fight_start_time
+            query_end_time = fight_start_time + phase_info['phase1_end_ms']
+            print(f"✓ Analyzing Phase 1 only (0ms to {phase_info['phase1_end_ms']}ms)")
+        elif phase == 2:
+            # Phase 2: From phase transition to end
+            query_start_time = fight_start_time + phase_info['phase2_start_ms']
+            query_end_time = fight_end_time
+            print(f"✓ Analyzing Phase 2 only ({phase_info['phase2_start_ms']}ms to {fight_end_time - fight_start_time}ms)")
 
-            # Recalculate fight duration for the phase
-            fight_duration_ms = query_end_time - query_start_time
-            fight_duration_seconds = fight_duration_ms / 1000
-            duration_minutes = int(fight_duration_seconds // 60)
-            duration_seconds = int(fight_duration_seconds % 60)
-        else:
-            print(f"⚠ Phase detection failed, analyzing full fight")
+        # Recalculate fight duration for the phase
+        fight_duration_ms = query_end_time - query_start_time
+        fight_duration_seconds = fight_duration_ms / 1000
+        duration_minutes = int(fight_duration_seconds // 60)
+        duration_seconds = int(fight_duration_seconds % 60)
+    elif phase:
+        print(f"⚠ Phase detection failed, analyzing full fight")
 
     # Time ranges for API queries (report-relative timestamps)
     # Note: WarcraftLogs events API expects report-relative timestamps, not fight-relative
@@ -1222,10 +1318,12 @@ def analyze_druid_performance(report_code, boss_name, player_name, phase=None):
     cast_data = []
     rotation_count = 0
 
-    # Check if this is Eredar Twins Phase 1 (special rotation logic)
+    # Check if this is a multi-tank encounter (special rotation logic)
     is_eredar_twins_p1 = (encounter_id == EREDAR_TWINS_ENCOUNTER_ID and phase == 1)
+    is_muru_p1 = (encounter_id == MURU_ENCOUNTER_ID and phase == 1)
+    is_multi_tank_encounter = is_eredar_twins_p1 or is_muru_p1
 
-    # For Eredar Twins P1: track rotation state
+    # For multi-tank encounters: track rotation state
     current_rotation_target_id = None  # The tank that started the current rotation
     current_rotation_start_time = None  # When the current rotation started
 
@@ -1264,8 +1362,8 @@ def analyze_druid_performance(report_code, boss_name, player_name, phase=None):
         if "Regrowth" in ability_name or ("Rebirth" in ability_name and target_name == "Environment"):
             is_regrowth = True
 
-        elif is_eredar_twins_p1:
-            # Eredar Twins Phase 1: Special rotation logic with multiple tanks
+        elif is_multi_tank_encounter:
+            # Multi-tank encounter: Special rotation logic with multiple tanks
             is_lifebloom_on_tank = (
                 ability_id == LIFEBLOOM_ID and
                 event_type == "cast" and
@@ -1355,9 +1453,9 @@ def analyze_druid_performance(report_code, boss_name, player_name, phase=None):
     first_rotation_seen = False
     casts_since_rotation_end = 0
 
-    # For Eredar Twins P1, use full Lifebloom duration for section timeout
+    # For multi-tank encounters, use full Lifebloom duration for section timeout
     # (multi-tank rotations need more flexibility than single-tank)
-    section_timeout = LIFEBLOOM_DURATION if is_eredar_twins_p1 else rotation_timeout
+    section_timeout = LIFEBLOOM_DURATION if is_multi_tank_encounter else rotation_timeout
 
     for i, cast in enumerate(cast_data):
         # Determine abbreviation
@@ -1826,7 +1924,9 @@ def main():
         print("  python analyze_druid.py wX7H9RtYJ48P1cdW Brutallus Mercychann")
         print("  python analyze_druid.py wX7H9RtYJ48P1cdW \"Eredar Twins\" Mercychann 1")
         print("  python analyze_druid.py wX7H9RtYJ48P1cdW \"Eredar Twins\" Mercychann 2")
-        print("\nNote: Phase parameter is optional and currently only works for Eredar Twins")
+        print("  python analyze_druid.py wX7H9RtYJ48P1cdW \"M'uru\" Mercychann 1")
+        print("  python analyze_druid.py wX7H9RtYJ48P1cdW \"M'uru\" Mercychann 2")
+        print("\nNote: Phase parameter is optional and works for Eredar Twins and M'uru")
         return 1
 
     report_code = sys.argv[1]

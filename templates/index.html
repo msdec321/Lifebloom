@@ -991,6 +991,7 @@
                             <option value="brutallus" data-i18n="boss.brutallus">Brutallus</option>
                             <option value="felmyst" data-i18n="boss.felmyst">Felmyst</option>
                             <option value="eredar_twins" data-i18n="boss.eredar_twins">Eredar Twins</option>
+                            <option value="muru" data-i18n="boss.muru">M'uru</option>
                         </select>
                     </div>
                     <div class="filter-item" id="phaseFilterContainer" style="display: none;">
@@ -1694,7 +1695,7 @@
                         </table>
 
                         <br>
-                        <strong>However...</strong> Experienced players will raise an eyebrow at the above list. Why? Because we're missing an extremely important part of the conversation...
+                        <strong>However...</strong> Experienced players will raise an eyebrow at the above list. Why? Because we're missing an important part of the conversation...
                         <br><br>
 
                         <hr style="border-color: #3a3d3a; margin: 2em 0;">
@@ -1902,7 +1903,7 @@ Regrowth Cast Time = 2.0 / (1 + Haste Rating / 1577)</pre>
                         <br>
                         <h2>To go... Even further beyond...</h2>
                         <br>
-                        <p>With <strong>Bloodlust/Heroism</strong> active (30% haste buff), you'll have access to rotations that would otherwise not be possible from gear alone. At higher haste values, the GCD becomes capped at <strong>1.0s</strong>, creating a <strong>6.0s rotation window</strong>:</p>
+                        <p>With <strong>Bloodlust/Heroism</strong> active (30% haste buff), you'll have access to rotations that would otherwise not be possible from gear alone. Eventually, the GCD becomes capped at <strong>1.0s</strong></p>
                         <p>Below are a set of minimum haste ratings needed to do these set of rotations while under Bloodlust. The last example, <strong style="color: #DE772A;">[1LB 0I 6RG]</strong>, is not possible even with max Haste and Bloodlust.</p>
 
                         <h5 style="margin-top: 1.5em;">Minimum Haste Required by Latency (with Bloodlust)</h5>
@@ -2067,6 +2068,7 @@ Regrowth Cast Time = 2.0 / (1 + Haste Rating / 1577)</pre>
                 'boss.brutallus': 'Brutallus',
                 'boss.felmyst': 'Felmyst',
                 'boss.eredar_twins': 'Eredar Twins',
+                'boss.muru': "M'uru",
                 'chart.haste': 'Haste',
                 'chart.hpsVsHaste': 'HPS vs Haste',
                 'chart.avgHpsByHasteBin': 'Avg HPS by Haste Bin',
@@ -2082,6 +2084,7 @@ Regrowth Cast Time = 2.0 / (1 + Haste Rating / 1577)</pre>
                 'boss.brutallus': '布鲁塔卢斯',
                 'boss.felmyst': '菲米丝',
                 'boss.eredar_twins': '艾瑞达双子',
+                'boss.muru': "穆鲁",
                 'chart.haste': '急速',
                 'chart.hpsVsHaste': 'HPS vs 急速',
                 'chart.avgHpsByHasteBin': 'Avg HPS by 急速 Bin',
@@ -3016,8 +3019,8 @@ Regrowth Cast Time = 2.0 / (1 + Haste Rating / 1577)</pre>
             const bossSelect = document.getElementById('dataset');
             const phaseContainer = document.getElementById('phaseFilterContainer');
 
-            // Show phase selector only for Eredar Twins
-            if (bossSelect.value === 'eredar_twins') {
+            // Show phase selector for multi-phase encounters (Eredar Twins, M'uru)
+            if (bossSelect.value === 'eredar_twins' || bossSelect.value === 'muru') {
                 phaseContainer.style.display = '';
             } else {
                 phaseContainer.style.display = 'none';
@@ -3026,7 +3029,7 @@ Regrowth Cast Time = 2.0 / (1 + Haste Rating / 1577)</pre>
             loadData();
         }
 
-        // Function to get the actual dataset name (handles Eredar Twins phases)
+        // Function to get the actual dataset name (handles multi-phase encounters)
         function getDatasetName() {
             const bossSelect = document.getElementById('dataset');
             const boss = bossSelect.value;
@@ -3034,6 +3037,11 @@ Regrowth Cast Time = 2.0 / (1 + Haste Rating / 1577)</pre>
             if (boss === 'eredar_twins') {
                 const phase = document.getElementById('phaseSelect').value;
                 return `eredar_twins_p${phase}`;
+            }
+
+            if (boss === 'muru') {
+                const phase = document.getElementById('phaseSelect').value;
+                return `muru_p${phase}`;
             }
 
             return boss;
