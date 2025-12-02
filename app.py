@@ -13,7 +13,8 @@ DATASETS_BEST = {
     'eredar_twins_p1': 'data/t6/eredar_twins_p1.csv',
     'eredar_twins_p2': 'data/t6/eredar_twins_p2.csv',
     'muru_p1': 'data/t6/muru_p1.csv',
-    'muru_p2': 'data/t6/muru_p2.csv'
+    'muru_p2': 'data/t6/muru_p2.csv',
+    'kiljaeden': 'data/t6/kiljaeden.csv'
 }
 
 # Available datasets - all reports per player
@@ -23,7 +24,8 @@ DATASETS_ALL = {
     'eredar_twins_p1': 'data/t6/eredar_twins_all_reports_p1.csv',
     'eredar_twins_p2': 'data/t6/eredar_twins_all_reports_p2.csv',
     'muru_p1': 'data/t6/muru_all_reports_p1.csv',
-    'muru_p2': 'data/t6/muru_all_reports_p2.csv'
+    'muru_p2': 'data/t6/muru_all_reports_p2.csv',
+    'kiljaeden': 'data/t6/kiljaeden_all_reports.csv'
 }
 
 def load_data(dataset='brutallus', data_source='best'):
